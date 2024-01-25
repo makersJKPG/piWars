@@ -1,0 +1,32 @@
+
+Pi Wars 2022
+- robot to return values dict in api response
+- make rc app mobile browser friendly
+- integrate rc app into cordova app container (for android and ios)
+- Method for configuring raspberry to connect with wifi gateway
+- Method for connecting client web browser with Robot on local network
+
+Robot workshops
+- Assemble Hat v2
+- Finalise 3d printer kit parts
+- Integrate Pi Wars 2021 app functionality into web app framework
+- Implement remote driver server
+
+Future
+- Charging station dock
+- Pi Zero based kit
+
+System software stack
+- Robot app with web api interface
+- local network driver service (image inference, processing, capture and robot commander)
+- cloud service (robot registration, image storage)
+    - services for robot
+    - services for driver
+
+Timeline
+    Robotsöndagar kl 11-14
+        5 september - tillsvidare
+
+    Robotskola
+        Våren 2022
+

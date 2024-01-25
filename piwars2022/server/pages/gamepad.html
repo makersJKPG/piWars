@@ -1,0 +1,539 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<link rel="shortcut icon" href="#">
+<title>Remote Control</title>
+<style type="text/css">
+    .btn {
+        font-size: 24px;
+        width: 150px;
+        height: 70px;
+    }
+    .column {
+        float: left;
+        width: 50%;
+        border: 1px solid green;
+    }
+
+    /* Clear floats after the columns */
+    .row:after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+
+    #joystick {
+        width: 250px;
+        height: 250px;
+        background-image:url("/joystick.png");
+        background-repeat: no-repeat;
+        background-size: auto;
+        float:right;
+    }
+</style>
+<script>
+
+    document.addEventListener('keydown', downKey);
+    document.addEventListener('keyup', upKey);
+
+    var doing = "S";
+
+    function downKey(e) {
+        if(e.code == "ArrowUp") {
+            if(doing != "F") {
+                driveForward();
+                doing = "F";
+            }
+            e.preventDefault();
+        } else if(e.code == "ArrowDown") {
+            if(doing != "B") {
+                driveBackward();
+                doing = "B";
+            }
+            e.preventDefault();
+        } else if(e.code == "ArrowLeft") {
+            if(doing != "L") {
+                driveLeft();
+                doing = "L";
+            }
+            e.preventDefault();
+        } else if(e.code == "ArrowRight") {
+            if(doing != "R") {
+                driveRight();
+                doing = "R";
+            }
+            e.preventDefault();
+        }
+    }
+    function upKey(e) {
+        if(e.code == "ArrowUp" || e.code == "ArrowDown" || e.code == "ArrowLeft" || e.code == "ArrowRight") {
+            driveStop();
+            doing = "S";
+            e.preventDefault();
+        }
+    }
+
+    function driveStop() {
+        console.log("stop");
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/stop');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response: " + xhr.responseText);
+            }
+            else {
+                console.log('Request failed. Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+
+    function drive(speed1, speed2) {
+		speed1 = Math.round(speed1 * 100) / 100
+		speed2 = Math.round(speed2 * 100) / 100
+        console.log("drive " + speed1 + " " + speed2);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/drive?speed1=' + speed1 + "&speed2=" + speed2);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveForward() {
+        console.log("forward");
+        speed = document.getElementById("speed").value
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/forward?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveBackward() {
+        console.log("backward");
+        speed = document.getElementById("speed").value
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/backward?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response: " + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveLeft() {
+        console.log("left");
+        speed = document.getElementById("speed").value
+        speed = Math.round(speed);
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/left?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveRight() {
+        console.log("right");
+        speed = document.getElementById("speed").value
+        speed = Math.round(speed);
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/right?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request: " + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function setServo(id, value) {
+        console.log("servo " + id + ": " + value);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/servo?id='+id+'&value='+value);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function setServos(value1, value2) {
+        console.log("servos: " + value1 + " " + value2);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/servos?servo1='+value1+'&servo2='+value2);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+	var gamepadAPI = {
+		controller: {},
+		turbo: false,
+		connect: function(evt) {
+		  gamepadAPI.controller = evt.gamepad;
+		  gamepadAPI.turbo = true;
+		  console.log('Gamepad connected.');
+		},
+		disconnect: function(evt) {
+		  gamepadAPI.turbo = false;
+		  delete gamepadAPI.controller;
+		  console.log('Gamepad disconnected.');
+		},
+		update: function() {
+		  // clear the buttons cache
+		  gamepadAPI.buttonsCache = [];
+		  // move the buttons status from the previous frame to the cache
+		  for(var k=0; k<gamepadAPI.buttonsStatus.length; k++) {
+			gamepadAPI.buttonsCache[k] = gamepadAPI.buttonsStatus[k];
+		  }
+		  // clear the buttons status
+		  gamepadAPI.buttonsStatus = [];
+		  // get the gamepad object
+		  var c = gamepadAPI.controller || {};
+
+		  // loop through buttons and push the pressed ones to the array
+		  var pressed = [];
+		  if(c.buttons) {
+			for(var b=0,t=c.buttons.length; b<t; b++) {
+			  if(c.buttons[b].pressed) {
+				pressed.push(gamepadAPI.buttons[b]);
+			  }
+			}
+		  }
+		  // loop through axes and push their values to the array
+		  var axes = [];
+		  if(c.axes) {
+			for(var a=0,x=c.axes.length; a<x; a++) {
+			  axes.push(c.axes[a].toFixed(2));
+			}
+		  }
+		  // assign received values
+		  gamepadAPI.axesStatus = axes;
+		  gamepadAPI.buttonsStatus = pressed;
+		  // return buttons for debugging purposes
+		  return pressed;
+		},
+		buttonPressed: function(button, hold) {
+		  var newPress = false;
+		  // loop through pressed buttons
+		  for(var i=0,s=gamepadAPI.buttonsStatus.length; i<s; i++) {
+			// if we found the button we're looking for...
+			if(gamepadAPI.buttonsStatus[i] == button) {
+			  // set the boolean variable to true
+			  newPress = true;
+			  // if we want to check the single press
+			  if(!hold) {
+				// loop through the cached states from the previous frame
+				for(var j=0,p=gamepadAPI.buttonsCache.length; j<p; j++) {
+				  // if the button was already pressed, ignore new press
+				  if(gamepadAPI.buttonsCache[j] == button) {
+					newPress = false;
+				  }
+				}
+			  }
+			}
+		  }
+		  return newPress;
+		},
+		buttons: [
+		  'DPad-Up','DPad-Down','DPad-Left','DPad-Right',
+		  'Start','Back','Axis-Left','Axis-Right',
+		  'LB','RB','Power','A','B','X','Y',
+		],
+		buttonsCache: [],
+		buttonsStatus: [],
+		axesStatus: []
+	};
+	// 6 left(-1.0)/right(1.0)
+	// 7 forward(-1.0)/reverse(1.0)
+
+	var did_stop = true;
+	var did_command = true;
+	var did_axis = false;
+	
+	var game_mode = 1;
+	var feeder_pos = 0;
+	var prev_feeder_pos = -1;
+	var wait_release = false;
+	
+	var done_picker = false;
+	
+    function init() {
+
+		window.addEventListener("gamepadconnected", gamepadAPI.connect);
+		window.addEventListener("gamepaddisconnected", gamepadAPI.disconnect);        
+        
+        console.log(navigator.getGamepads());
+        
+		var interval = setInterval(function() {
+			if(gamepadAPI.turbo) {
+//				gamepadAPI.update()
+				var c = gamepadAPI.controller;
+				var axes = [];
+				if(c.axes) {
+					for(var a=0,x=c.axes.length; a<x; a++) {
+						axes.push(c.axes[a].toFixed(2));
+					}
+				}
+				gamepadAPI.axesStatus = axes;
+				var buttons = [];
+				if(c.buttons) {
+					for(var b=0,t=c.buttons.length; b<t; b++) {
+						buttons.push(c.buttons[b].pressed);
+					}
+				}
+				gamepadAPI.buttonsStatus = buttons;
+
+				dir = "stop";
+				if (gamepadAPI.axesStatus[6] == -1.0) {
+					dir = "left";
+				} else if (gamepadAPI.axesStatus[6] == 1.0) {
+					dir = "right"
+				}
+				if (gamepadAPI.axesStatus[7] == -1.0) {
+					dir = "forward";
+				} else if (gamepadAPI.axesStatus[7] == 1.0) {
+					dir = "reverse"
+				}
+
+				if (!dir.localeCompare("forward")) {
+					if (!did_command) {
+						console.log("forward");
+						driveForward();
+						did_stop = false;
+						did_command = true;
+					}
+				} else if (!dir.localeCompare("reverse")) {
+					if (!did_command) {
+						console.log("reverse");
+						driveBackward();
+						did_stop = false;
+						did_command = true;
+					}
+				} else if (!dir.localeCompare("right")) {
+					if (!did_command) {
+						console.log("right");
+						driveRight();
+						did_stop = false;
+						did_command = true;
+					}
+				} else if (!dir.localeCompare("left")) {
+					if (!did_command) {
+						console.log("left");
+						driveLeft();
+						did_stop = false;
+						did_command = true;
+					}
+				} else {
+					if (!did_stop) {
+						driveStop();
+						did_stop = true;
+					}
+					did_command = false;
+				}
+
+//				console.log("buttons: " + gamepadAPI.buttonsStatus);
+//				console.log("axes:" + gamepadAPI.axesStatus);
+
+				if (!did_command) {
+					speed_joy  = -gamepadAPI.axesStatus[1];
+					turn_joy = gamepadAPI.axesStatus[3];
+					if (speed_joy != 0.0 || turn_joy != 0.0) {
+						did_axis = true;
+						console.log("speed_joy " + speed_joy + " turn_joy " + turn_joy);
+						if (Math.abs(speed_joy) > 0.0) {
+							// speed activated
+							speed1 = speed2 = speed_joy;
+							if (speed_joy > 0.0) {
+								if (turn_joy > 0.0) {
+									// turn right
+									speed2 *= 1.0 - Math.abs(turn_joy);
+								} else if (turn_joy < 0.0) {
+									// turn left
+									speed1 *= 1.0 - Math.abs(turn_joy);
+								}
+							} else if (speed_joy < 0.0) {
+								if (turn_joy > 0.0) {
+									// turn right
+									speed1 *= 1.0 - Math.abs(turn_joy);
+								} else if (turn_joy < 0.0) {
+									// turn left
+									speed2 *= 1.0 - Math.abs(turn_joy);
+								}
+							}
+							drive(speed1, speed2)
+						} else {
+							// only turning
+							speed1 = turn_joy/2;
+							speed2 = -turn_joy/2;
+							drive(speed1, speed2)
+						}
+							
+					} else if (did_axis == true) {
+						driveStop();
+						did_axis = false;
+					}
+
+				}
+	
+				if (game_mode == 0) {
+					// hungry cows
+					if (wait_release) {
+						if (!buttons[5] && !buttons[4]) {
+							wait_release = false;
+						}
+					} else {
+						// right1 button - advance feeder
+						if (buttons[5]) {
+							console.log("advance feeder");
+							if (feeder_pos < 3) {
+								feeder_pos++;
+							}
+						} else if (buttons[4]) {
+							console.log("reset feeder")
+							feeder_pos = 0;
+						}
+						if (prev_feeder_pos != feeder_pos) {
+							prev_feeder_pos = feeder_pos;
+							switch (feeder_pos) {
+								case 0:
+									value1 = 19;
+									value2 = 1;
+									break;
+								case 1:
+									value1 = 16;
+									value2 = 4;
+									break;
+								case 2:
+									value1 = 12;
+									value2 = 8;
+									break;
+								case 3:
+									value1 = 9;
+									value2 = 12;
+									break;
+							}
+							setServos(value1, value2);
+							wait_release = true;
+						}
+					}
+				} else if (game_mode == 1) {
+					// natures bounty
+					if (buttons[5] && !buttons[4]) {
+						if (!done_picker) {
+							val = 0
+							value1 = val
+							value2 = 20 - val
+							setServos(value1, value2);
+							done_picker = true;
+						}
+					}
+					if (buttons[4] && !buttons[5]) {
+						if (!done_picker) {
+							value1 = 14
+							value2 = 9
+							setServos(value1, value2);
+							done_picker = true;
+						}
+					}
+					if (!buttons[4] && !buttons[5]) {
+						done_picker = false;
+					}
+				}
+
+			}
+
+		}, 60);
+        
+        document.getElementById("joystick").addEventListener("pointerdown", function(e) {
+            var rect = e.target.getBoundingClientRect();
+            var x = Math.floor(e.clientX - rect.left);
+            var y = Math.floor(e.clientY - rect.top);
+            // up: over 1 and 2
+            // dn: under 1 and 2
+            // lt: under 1 over 2
+            // rt: over 1 under 2
+            var diag1 = y - x;
+            var diag2 = y + x - 250
+            if (diag1 < 0) {
+                if (diag2 < 0) {    // up
+                    driveForward();
+                } else {            // rt
+                    driveRight();
+                }
+            } else {
+                if (diag2 < 0) {    // lt
+                    driveLeft();
+                } else {            // dn
+                    driveBackward();
+                }
+            }
+            // console.log("joystick: " +  x + "," + y);
+            // console.log(e);
+        });
+        document.getElementById("joystick").addEventListener("pointerup", function(e) {
+            console.log("joystick: pointerup");
+            driveStop();
+        });
+        document.getElementById("joystick").addEventListener("mouseout", function(e) {
+            console.log("joystick: pointerup");
+            driveStop();
+        });
+        
+        document.getElementById("servo1").addEventListener("input", function(e) {
+            setServo(0, e.target.value);
+        });
+        document.getElementById("servo2").addEventListener("input", function(e) {
+            setServo(1, e.target.value);
+        });
+
+    }
+    </script>
+</head>
+<body onload="init()">
+    <p><a href="/hungrycattle.html">Hungry Cattle</a> | <a href="/naturesbounty.html">Natures Bounty</a> | <a href="/farmyardtours.html">Farmyard Tours</a> | <a href="/shepherdspie.html">Shepherd's Pie</a></p>
+    <div class="row">
+        <div class="column">
+            <img src="/api/stream.mjpg" width="640" height="480" loading="lazy">
+            <div id="joystick"></div>
+        </div>
+    </div>
+    <p>Servo1: <input id="servo1" type="range" min="1" max="20" step="1" value="10"></p>
+    <p>Servo2: <input id="servo2" type="range" min="1" max="20" step="1" value="10"></p>
+    <p>Speed: <input id="speed" type="range" min="1" max="255" step="1" value="160"></p>
+</body>
+</html>

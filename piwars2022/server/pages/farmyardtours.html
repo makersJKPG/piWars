@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<link rel="shortcut icon" href="#">
+<title>Remote Control</title>
+<style type="text/css">
+    .btn {
+        font-size: 24px;
+        width: 150px;
+        height: 70px;
+    }
+    .column {
+        float: left;
+        width: 50%;
+        border: 1px solid green;
+    }
+
+    /* Clear floats after the columns */
+    .row:after {
+        content: "";
+        display: table;
+        clear: both;
+    }
+
+    #joystick {
+        width: 250px;
+        height: 250px;
+        background-image:url("/joystick.png");
+        background-repeat: no-repeat;
+        background-size: auto;
+        float:right;
+    }
+</style>
+<script>
+
+    document.addEventListener('keydown', downKey);
+    document.addEventListener('keyup', upKey);
+
+    var doing = "S";
+
+    function downKey(e) {
+        if(e.code == "ArrowUp") {
+            if(doing != "F") {
+                driveForward();
+                doing = "F";
+            }
+            e.preventDefault();
+        } else if(e.code == "ArrowDown") {
+            if(doing != "B") {
+                driveBackward();
+                doing = "B";
+            }
+            e.preventDefault();
+        } else if(e.code == "ArrowLeft") {
+            if(doing != "L") {
+                driveLeft();
+                doing = "L";
+            }
+            e.preventDefault();
+        } else if(e.code == "ArrowRight") {
+            if(doing != "R") {
+                driveRight();
+                doing = "R";
+            }
+            e.preventDefault();
+        }
+    }
+    function upKey(e) {
+        if(e.code == "ArrowUp" || e.code == "ArrowDown" || e.code == "ArrowLeft" || e.code == "ArrowRight") {
+            driveStop();
+            doing = "S";
+            e.preventDefault();
+        }
+    }
+
+    function driveStop() {
+        console.log("stop");
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/stop');
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response: " + xhr.responseText);
+            }
+            else {
+                console.log('Request failed. Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+
+    function driveForward() {
+        console.log("forward");
+        speed = document.getElementById("speed").value
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/forward?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveBackward() {
+        console.log("backward");
+        speed = document.getElementById("speed").value
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/backward?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Response: " + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveLeft() {
+        console.log("left");
+        speed = document.getElementById("speed").value
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/left?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function driveRight() {
+        console.log("right");
+        speed = document.getElementById("speed").value
+        console.log("speed " + speed);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/right?speed=' + speed);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request: " + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function setServo(id, value) {
+        console.log("servo " + id + ": " + value);
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'api/servo?id='+id+'&value='+value);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log("Request:" + xhr.responseText);
+            }
+            else {
+                console.log('Request failed.  Returned status of ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+    function init() {
+        document.getElementById("joystick").addEventListener("pointerdown", function(e) {
+            var rect = e.target.getBoundingClientRect();
+            var x = Math.floor(e.clientX - rect.left);
+            var y = Math.floor(e.clientY - rect.top);
+            // up: over 1 and 2
+            // dn: under 1 and 2
+            // lt: under 1 over 2
+            // rt: over 1 under 2
+            var diag1 = y - x;
+            var diag2 = y + x - 250
+            if (diag1 < 0) {
+                if (diag2 < 0) {    // up
+                    driveForward();
+                } else {            // rt
+                    driveRight();
+                }
+            } else {
+                if (diag2 < 0) {    // lt
+                    driveLeft();
+                } else {            // dn
+                    driveBackward();
+                }
+            }
+            // console.log("joystick: " +  x + "," + y);
+            // console.log(e);
+        });
+        document.getElementById("joystick").addEventListener("pointerup", function(e) {
+            console.log("joystick: pointerup");
+            driveStop();
+        });
+        document.getElementById("joystick").addEventListener("mouseout", function(e) {
+            console.log("joystick: pointerup");
+            driveStop();
+        });
+        
+        document.getElementById("servo1").addEventListener("input", function(e) {
+            setServo(0, e.target.value);
+        });
+        document.getElementById("servo2").addEventListener("input", function(e) {
+            setServo(1, e.target.value);
+        });
+
+    }
+    </script>
+</head>
+<body onload="init()">
+    <p><a href="/hungrycattle.html">Hungry Cattle</a> | <a href="/naturesbounty.html">Natures Bounty</a> | <a href="/farmyardtours.html">Farmyard Tours</a> | <a href="/shepherdspie.html">Shepherd's Pie</a></p>
+    <div class="row">
+        <div class="column">
+            <img src="/api/stream.mjpg" width="640" height="480" loading="lazy">
+            <div id="joystick"></div>
+        </div>
+    </div>
+    <p>Servo1: <input id="servo1" type="range" min="1" max="20" step="1" value="10"></p>
+    <p>Servo2: <input id="servo2" type="range" min="1" max="20" step="1" value="10"></p>
+    <p>Speed: <input id="speed" type="range" min="1" max="255" step="1" value="255"></p>
+</body>
+</html>
