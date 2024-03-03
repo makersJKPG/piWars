@@ -20,7 +20,7 @@ def makeint32(val):
         return -(65536-val)
 
 def set_motor(m1, dir1, m2, dir2):
-    print("set_motor({}, {}, {}, {})".format(m1, dir1, m2, dir2))
+    #print("set_motor({}, {}, {}, {})".format(m1, dir1, m2, dir2))
     if m1 > 255:
         m1 = 255
     if m1 < 0:
@@ -30,9 +30,9 @@ def set_motor(m1, dir1, m2, dir2):
     if m2 < 0:
         m2 = 0
     cmd = [ 0xBA, m1, dir1, m2, dir2]
-    #print("sending: {}".format(cmd))
+    print("sending: {}".format(cmd))
     cs = spi.xfer2(cmd)
-    #print("received: {}".format(cs))
+    print("received: {}".format(cs))
 
 def get_fifo_count():
     global debug
@@ -49,14 +49,16 @@ def get_fifo_count():
 
 def get_encoder():
     print("get_encoder()")
-    cmd = [0xAC, 0, 0, 0, 0]
+    cmd = [0xAC, 0, 0, 0, 0, 0, 0, 0, 0]
     #print("sending: {}".format(cmd)) 
     cs = spi.xfer2(cmd)
     #print("received: {}".format(cs))
     # note the byte order here, two 16 bit words in little endian format
-    value = (cs[2]<<24) + (cs[1]<<16) + (cs[4]<<8) + cs[3]
-    value = struct.unpack("l", value.to_bytes(4, "little"))[0]
-    return value
+    value1 = (cs[2]<<24) + (cs[1]<<16) + (cs[4]<<8) + cs[3]
+    value1 = struct.unpack("l", value1.to_bytes(4, "little"))[0]
+    value2 = (cs[6]<<24) + (cs[5]<<16) + (cs[8]<<8) + cs[7]
+    value2 = struct.unpack("l", value2.to_bytes(4, "little"))[0]
+    return value1, value2
 
 def get_imu():
     print("get_imu()")
