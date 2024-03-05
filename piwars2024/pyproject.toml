@@ -1,0 +1,9 @@
+[project]
+name = "piwars2024"
+version = "0.0.1"
+description = "Library of functions for piwars2024"
+
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.2,<4"]
+

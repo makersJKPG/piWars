@@ -55,9 +55,9 @@ def get_encoder():
     #print("received: {}".format(cs))
     # note the byte order here, two 16 bit words in little endian format
     value1 = (cs[2]<<24) + (cs[1]<<16) + (cs[4]<<8) + cs[3]
-    value1 = struct.unpack("l", value1.to_bytes(4, "little"))[0]
+    value1 = struct.unpack("i", value1.to_bytes(4, "little"))[0]
     value2 = (cs[6]<<24) + (cs[5]<<16) + (cs[8]<<8) + cs[7]
-    value2 = struct.unpack("l", value2.to_bytes(4, "little"))[0]
+    value2 = struct.unpack("i", value2.to_bytes(4, "little"))[0]
     return value1, value2
 
 def get_imu():
