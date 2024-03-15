@@ -209,6 +209,115 @@ class Cam:
         #self.cap.release()
 
 
+class MotorControler:
+    from enum import Enum
+    import set_motor,get_encoder
+    class Mode(Enum):
+        MANUAL=0
+        AUTONOMOUS=1
+    class Directions(Enum):
+        FORWARD=0
+        BACKWARD=1
+        STANDING_ROT_LEFT=2
+        STANDING_ROT_RIGHT=3
+        TURN_LEFT=4
+        TURN_RIGHT=5
+
+    def __init__(
+            self,
+            run=True,
+            moveOffset=10,
+            turnRadius=.7,          #1=100%
+            lowPassFilter=(.25,     #Throughpass
+                           .75),    #Oldval
+            mode=Mode.MANUAL):
+        self.mode=mode
+        self.run=run
+        self.lpf=lowPassFilter
+        self.encoderL=0
+        self.encoderR=0
+        self.moveOffset=moveOffset
+        self.motorInc=0
+        self.turnRadius=turnRadius
+        self.move=(0,0)
+        self.obstasclePos=(0,0)
+        self.startingPoint=self.get_encoder() #Left,Right encoder offset
+        self.targetCalculation=0
+        if self.mode==self.Mode.AUTONOMOUS:
+            self.moveThread=t(target=self.continuousMovement,args=(),daemon=True)
+            self.moveThread.start()
+
+    def setlowPassFilter(self,newLow):
+        if newLow<1 and newLow>0:
+            self.lowPassFilter=(newLow,1-newLow)
+        else:
+            print('Info Low pass filter disabled')
+            self.lowPassFilter=(1,0)
+
+    def setMotorInc(self,incrementCalculation):
+        self.motorInc=incrementCalculation
+
+    def getMotorInc(self):
+        return self.motorInc
+
+    def getEncoderValues(self):
+        left,right=(0,1)     #index
+        return (self.encoderL-self.startingPoint[left],
+                self.encoderR-self.startingPoint[right])
+    
+    def getStartingPoint(self):
+        return self.startingPoint
+    
+    def getLowPassFilter(self):
+        return self.lowPassFilter
+
+    def continuousMovement(self):
+        left,right=(0,1)    #index
+        low,hi=(0,1)        #index
+        motorSetting=(0,0)
+
+        while self.run:
+            self.encoderL,self.encoderR=self.get_encoder()
+
+            # obstacleAvoidance=(
+            #     obstacleStart*self.motorInc,
+            #     obstacleSize*self.motorInc)
+
+            motorSetting=(
+                (motorSetting[left]*self.lpf[low])+(self.move[left]*self.lpf[hi]),
+                (motorSetting[left]*self.lpf[low])+(self.move[right]*self.lpf[hi]))
+
+            self.set_motor(
+                abs(motorSetting[left]),    #Speed for left motor
+                int(motorSetting[left]>0),  #Direction of left motor
+                abs(motorSetting[right]),   #Speed of right motor
+                int(motorSetting[right]>0)) #Direction of right motor
+
+    def moveAutonomous(self,speed=0,direction=Directions.FORWARD):
+        low=1*self.turnRadius
+        high=1-low
+
+        if direction==self.Directions.TURN_RIGHT:
+            self.move=(speed*high,speed*low)
+        elif direction==self.Directions.TURN_LEFT:
+            self.move=(speed*low,speed*high)
+        elif direction==self.Directions.STANDING_ROT_RIGHT:
+            self.move=(speed,-speed)
+        elif direction==self.Directions.STANDING_ROT_LEFT:
+            self.move=(-speed,speed)
+        elif direction==self.Directions.BACKWARD:
+            self.move=(-speed,-speed)
+        else: #if direction==self.Directions.FORWARD:
+            self.move=(speed,speed)
+
+    def moveManual(self):
+        pass
+
+    def destroy(self):
+        self.run=False
+        self.moveThread=0
+
+
 class Runner:
     from enum import Enum
     from numpy import array_equal,pi
@@ -232,32 +341,34 @@ class Runner:
         ACUTE2=2
         OBTUSE2=3
 
-    def __init__(
-            self,
-            width=300/640,
-            sortNum=12,
-            offsetMargin=10/640,
-            heldObject=70/640):
-            
+    def __init__(self,
+                 width=300,
+                 sortNum=12,
+                 offsetMargin=10,
+                 heldObject=70,
+                 run=True,
+                 cameraSetup=(),
+                 motorControlerSetup=()):
         if DEBUGGING:
             self.debugFrame=[]
             self.debugGreenMask=[]
             self.debugRedMask=[]
-        self.cam=Cam()
+        self.cam=Cam(cameraSetup[0],cameraSetup[1],cameraSetup[2],cameraSetup[3])
+        self.motorControler=MotorControler(motorControlerSetup[0],motorControlerSetup[1],motorControlerSetup[2],motorControlerSetup[3])
         self.rotation=(
             0,  #Left num steps
             0)  #Right num steps
         self.numUnsorted=sortNum
         self.numSorted=0
         self.sortGoal=sortNum
-        self.offsetMarginX=int(offsetMargin*self.cam.width)
-        self.offsetMarginY=int(offsetMargin*self.cam.height)
-        self.width=int(width*self.cam.width)
-        self.heldObject=int(heldObject*self.cam.width)
+        self.offsetMargin=offsetMargin
+        self.width=width
+        self.heldObject=heldObject
         self.target=None
         self.state=self.Mode.IDLE
+        self.run=run
         self.startSignal=False
-        self.runThread=t(target=self.run,args=(),daemon=True)
+        self.runThread=t(target=self.runMain,args=(),daemon=True)
         for _ in range(5):
             if self.cam.readSuccess:
                 self.cam.setMaskCreation(True)
@@ -328,22 +439,26 @@ class Runner:
         return (xAlgL,yAlgL,xAlgR,yAlgR)
 
     def zeroIn(self,obj,goal):
-        if DEBUGGING:
-            pass
-        else:
-            delta=goal-obj
-            if abs(delta)<self.offsetMarginX:
+        delta=goal-obj
+        mc=self.motorControler
+        if abs(delta)<self.offsetMargin:    #Move forward
+            if DEBUGGING:
                 print('go')
-            else:
-                if delta<0:
+            mc.moveAutonomous(50)
+        else:
+            if delta<0:
+                if DEBUGGING:
                     print('right '+str(abs(delta)))
-                else:
+                mc.moveAutonomous(delta,mc.Directions.TURN_RIGHT)
+            else:
+                if DEBUGGING:
                     print('left '+str(delta))
+                mc.moveAutonomous(delta,mc.Directions.TURN_LEFT)
 
     #Main run sequence
-    def run(self):
+    def runMain(self):
 
-        while True:
+        while self.run:
             if self.state==self.Mode.IDLE:
                 self.idle()
             if self.state==self.Mode.SEARCH1:
@@ -367,14 +482,13 @@ class Runner:
             print('camRead:\t',str(self.cam.readSuccess))
 
         while self.state==self.Mode.IDLE:
-            
             result=self.startSignal
             if result==goal:
                 break
         self.setState(self.Mode.SEARCH1)
 
     #Find objective. If none in view, rotate
-    def search1(self):
+    def search1(self,speed=50):
         print('SEARCH1')
         
         centerPoint=0   #index
@@ -382,6 +496,7 @@ class Runner:
         area=2          #index
         goal=True
         result=False
+        speed=speed
 
         while self.state==self.Mode.SEARCH1:
             rC=self.cam.redCenter
@@ -446,8 +561,11 @@ class Runner:
             #If no targets in view
             #Search for target
             else:
-                print('No target: Turn RIGHT')
-                self.rotation=(self.rotation[0]+10,self.rotation[1])
+                if DEBUGGING:
+                    print('No target: Turn RIGHT')
+
+                self.motorControler.moveAutonomous(speed,
+                    self.motorControler.Directions.STANDING_ROT_RIGHT)
             
             result=self.target!=None
             if result==goal:
@@ -471,9 +589,13 @@ class Runner:
             elif self.target==self.Target.GREEN:
                 centerPoint,_,_,targetSize,_=self.cam.getGreenCenter()
             else:
-                print('ERROR! fetch state: unknown target')
-                self.setStartSignal(False)
-                self.setState(self.Mode.IDLE)
+                if DEBUGGING:
+                    print('ERROR! fetch state: unknown target')
+                    self.setStartSignal(False)
+                    self.setState(self.Mode.IDLE)
+                else:
+                    self.target=None
+                    self.setState(self.Mode.SEARCH1)
                 break
 
             #If target is lost, return to search1 state
@@ -502,7 +624,7 @@ class Runner:
             elif self.target==self.Target.GREEN:
                 self.target=self.Target.BLUE
 
-    #Use self.rotation to calculate where to deposit object
+    #Use motorControler.get_encoder() to calculate where to deposit object
     #find deposit color based on object color
     def search2(self):
         print('SEARCH2')
@@ -511,8 +633,8 @@ class Runner:
         leftMotor=0     #Index
         rightMotor=1    #Index
         goal=True
-        acceptableOffset=self.offsetMarginX
-        move=(self.rotation[0]*-1,self.rotation[1]*-1)
+        acceptableOffset=self.offsetMargin
+        mc=self.motorControler
 
         while self.state==self.Mode.SEARCH2:
             if self.target==self.Target.BLUE:
@@ -520,17 +642,26 @@ class Runner:
             elif self.target==self.Target.YELLOW:
                 centerPoint,_,_,targetSize,_=self.cam.getYellowCenter()
             else:
-                print('ERROR! search2 state: unknown target')
-                self.setStartSignal(False)
-                self.setState(self.Mode.IDLE)
+                if DEBUGGING:
+                    print('ERROR! fetch state: unknown target')
+                    self.setStartSignal(False)
+                    self.setState(self.Mode.IDLE)
+                else:
+                    self.target=None
+                    self.setState(self.Mode.SEARCH1)
                 break
 
             #Check if deposit is in view
             if targetSize[x]<=0 or centerPoint[x]>self.cam.width:
+                move=mc.getEncoderValues()
                 if move[leftMotor]>move[rightMotor]:
-                    print('Deposit not in view, move right')
+                    if DEBUGGING:
+                        print('Deposit not in view, move right')
+                    mc.moveAutonomous(self.cam.globalCenter[x],mc.Directions.TURN_RIGHT)
                 else:
-                    print('Deposit not in view, move left')
+                    if DEBUGGING:
+                        print('Deposit not in view, move left')
+                    mc.moveAutonomous(self.cam.globalCenter[x],mc.Directions.TURN_LEFT)    
             else:
                 self.zeroIn(centerPoint[x],self.cam.globalCenter[x])
 
@@ -544,13 +675,13 @@ class Runner:
     def deposit(self):
         print('DEPOSIT')
 
-        x=0     #index
-        y=1     #index
-        rH,b1,b2=(0,0,0)   #trapezoid algorithm: length, height, bases
-        angle1,angle2=(0,0)     #trapezoid algorithm: angles
-        xAlgL,yAlgL=(1,1)       #trapezoid algorithm left side
-        xAlgR,yAlgR=(1,1)       #trapezoid algorithm right side
-        trapezoid=-1            #For trapezoid typ identification
+        x=0                 #index
+        y=1                 #index
+        rH,b1,b2=(0,0,0)    #trapezoid algorithm: length, height, bases
+        angle1,angle2=(0,0) #trapezoid algorithm: angles
+        xAlgL,yAlgL=(1,1)   #trapezoid algorithm left side
+        xAlgR,yAlgR=(1,1)   #trapezoid algorithm right side
+        trapezoid=-1        #For trapezoid typ identification
         goal=True
         roi=[]
 
@@ -696,6 +827,8 @@ class Runner:
                     self.debugGreenMask=greenMask
                     self.debugRedMask=redMask
 
+                self.motorControler.moveAutonomous()
+
                 result=('''object in target''')
                 if result==goal:
                     self.numUnsorted=self.numUnsorted-1
@@ -721,6 +854,7 @@ class Runner:
                 self.setState(self.Mode.SEARCH1)
 
     def destroy(self):
+        self.run=False
         self.runThread=0
         self.cam.destroy()
-        
+        self.motorControler.destroy()        
