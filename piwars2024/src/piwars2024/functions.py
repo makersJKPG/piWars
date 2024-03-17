@@ -19,6 +19,22 @@ def makeint32(val):
     else:
         return -(65536-val)
 
+def send_spi_cmd(cmd):
+    sendlist = [ 0xa5 ]
+    for i, val in enumerate(cmd):
+        if val == 0xa5:
+            sendlist.append(0xa4)
+            sendlist.append(0x01)
+        elif val == 0xa4:
+            sendlist.append(0xa4)
+            sendlist.append(0x00)
+        else:
+            sendlist.append(val)
+
+    print("sending: {}".format(sendlist))
+    cs = spi.xfer2(sendlist)
+    print("received: {}".format(cs))
+
 def set_motor(m1, dir1, m2, dir2):
     #print("set_motor({}, {}, {}, {})".format(m1, dir1, m2, dir2))
     if m1 > 255:
@@ -29,10 +45,11 @@ def set_motor(m1, dir1, m2, dir2):
         m2 = 255
     if m2 < 0:
         m2 = 0
-    cmd = [ 0xBA, m1, dir1, m2, dir2]
-    print("sending: {}".format(cmd))
-    cs = spi.xfer2(cmd)
-    print("received: {}".format(cs))
+    cmd = [ 0xBA, m1, dir1, m2, dir2 ]
+    send_spi_cmd(cmd)
+    #print("sending: {}".format(cmd))
+    #cs = spi.xfer2(cmd)
+    #print("received: {}".format(cs))
 
 def get_fifo_count():
     global debug

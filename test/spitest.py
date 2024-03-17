@@ -10,12 +10,12 @@ spi.bits_per_word = 8
 spi.max_speed_hz = 10000
 spi.mode = 1
 
-msg = [0x16]
-spi.xfer2(msg)
+msg = [ 0xba, 0, 0, 0, 0 ]
+print("Sending: {}".format(msg))
+cs = spi.xfer2(msg)
 
 b = spi.readbytes(5)
-print("byte")
-print(b)
+print("Received: {}".format(b))
 
 #time.sleep(5)
 
