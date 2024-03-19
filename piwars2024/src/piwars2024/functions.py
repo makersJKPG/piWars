@@ -13,12 +13,6 @@ spi.bits_per_word = 8
 spi.max_speed_hz = 10000
 spi.mode = 1
 
-def makeint32(val):
-    if val < 32767:
-        return val
-    else:
-        return -(65536-val)
-
 def send_spi_cmd(cmd):
     sendlist = [ 0xa5 ]
     for i, val in enumerate(cmd):
@@ -34,9 +28,10 @@ def send_spi_cmd(cmd):
     print("sending: {}".format(sendlist))
     cs = spi.xfer2(sendlist)
     print("received: {}".format(cs))
+    cs.pop(0)   # remove byte from start byte 0xa5
+    return cs
 
 def set_motor(m1, dir1, m2, dir2):
-    #print("set_motor({}, {}, {}, {})".format(m1, dir1, m2, dir2))
     if m1 > 255:
         m1 = 255
     if m1 < 0:
@@ -45,31 +40,25 @@ def set_motor(m1, dir1, m2, dir2):
         m2 = 255
     if m2 < 0:
         m2 = 0
+    if dir1 > 0:
+        dir1 = 1
+    else:
+        dir1 = 0
+    if dir2 > 0:
+        dir2 = 0
+    else:
+        dir2 = 1
     cmd = [ 0xBA, m1, dir1, m2, dir2 ]
     send_spi_cmd(cmd)
-    #print("sending: {}".format(cmd))
-    #cs = spi.xfer2(cmd)
-    #print("received: {}".format(cs))
 
 def get_fifo_count():
-    global debug
-    if debug:
-        print("get_fifo_count()")
-    cmd = [0xAF, 0]
-    if debug:
-        print("sending: {}".format(cmd)) 
-    cs = spi.xfer2(cmd)
-    if debug:
-        print("received: {}".format(cs))
-    # note the byte order here, two 16 bit words in little endian format
+    cmd = [ 0xAF, 0 ] 
+    cs = send_spi_cmd(cmd)
     return cs[1]
 
 def get_encoder():
-    print("get_encoder()")
-    cmd = [0xAC, 0, 0, 0, 0, 0, 0, 0, 0]
-    #print("sending: {}".format(cmd)) 
-    cs = spi.xfer2(cmd)
-    #print("received: {}".format(cs))
+    cmd = [0xAC, 0, 0, 0, 0, 0, 0, 0, 0] 
+    cs = send_spi_cmd(cmd)
     # note the byte order here, two 16 bit words in little endian format
     value1 = (cs[2]<<24) + (cs[1]<<16) + (cs[4]<<8) + cs[3]
     value1 = struct.unpack("i", value1.to_bytes(4, "little"))[0]
@@ -77,12 +66,15 @@ def get_encoder():
     value2 = struct.unpack("i", value2.to_bytes(4, "little"))[0]
     return value1, value2
 
+def makeint32(val):
+    if val < 32767:
+        return val
+    else:
+        return -(65536-val)
+
 def get_imu():
-    print("get_imu()")
-    cmd = [0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    #print("sending: {}".format(cmd)) 
-    cs = spi.xfer2(cmd)
-    #print("received: {}".format(cs))
+    cmd = [0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
+    cs = send_spi_cmd(cmd)
     t  = (cs[1]<<8) + cs[2]; 
     ax = makeint32((cs[3]<<8) + cs[4]); 
     ay = makeint32((cs[5]<<8) + cs[6]); 
@@ -93,11 +85,8 @@ def get_imu():
     return (t, ax, ay, az, gx, gy, gz)
 
 def get_imu_float():
-    print("get_imu()")
-    cmd = [0xAD, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    #print("sending: {}".format(cmd)) 
-    cs = spi.xfer2(cmd)
-    #print("received: {}".format(cs))
+    cmd = [0xAD, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
+    cs = send_spi_cmd(cmd)
 
     cs.pop(0)   # remove first byte
     ba = bytearray(cs)
@@ -106,15 +95,8 @@ def get_imu_float():
     return imudata
 
 def get_imu_float_fifo():
-    global debug
-    if debug:
-        print("get_imu_fifo()")
-    cmd = [0xAE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    if debug:
-        print("sending: {}".format(cmd)) 
-    cs = spi.xfer2(cmd)
-    if debug:
-        print("received: {}".format(cs))
+    cmd = [0xAE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 
+    cs = send_spi_cmd(cmd)
 
     cs.pop(0)   # remove first byte
     ba = bytearray(cs)
