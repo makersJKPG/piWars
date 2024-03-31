@@ -31,6 +31,19 @@ def send_spi_cmd(cmd):
     cs.pop(0)   # remove byte from start byte 0xa5
     return cs
 
+def set_servo(servo, val):
+
+    if (servo != 1) and (servo != 2):
+        print("Invalid servo number")
+        return
+    if val < 0:
+        val = 0
+    if val > 255:
+        val = 255
+
+    cmd = [ 0xBC, servo, val ]
+    send_spi_cmd(cmd)
+
 def set_motor(m1, dir1, m2, dir2):
     if m1 > 255:
         m1 = 255
@@ -49,6 +62,27 @@ def set_motor(m1, dir1, m2, dir2):
     else:
         dir2 = 1
     cmd = [ 0xBA, m1, dir1, m2, dir2 ]
+    send_spi_cmd(cmd)
+
+def set_speed(s1, s2):
+    if s1 > 100:
+        s1 = 100
+    if s1 < -100:
+        s1 = -100
+    if s2 > 100:
+        s2 = 100
+    if s2 < -100:
+        s2 = -100
+    speed1 = struct.pack('h', s1)
+    speed2 = struct.pack('h', s2)
+
+    cmd = [ 0xBD, speed1[1], speed1[0], speed2[1], speed2[0] ]
+    send_spi_cmd(cmd)
+
+# mode = 1 = speed control
+# mode = 2 = pwm control
+def set_mode(mode):
+    cmd = [ 0xBE, mode ]
     send_spi_cmd(cmd)
 
 def get_fifo_count():

@@ -40,6 +40,9 @@ def drive(speed, turning):
 turning = 0
 speed = 0
 
+# set speed control
+piwars2024.set_mode(1)
+
 while True:
         
     event = file.read(event_size)
@@ -51,35 +54,35 @@ while True:
     if button == DPAD_UPDOWN and action == 2:
         # forward...
         if value == -32767:
-            piwars2024.set_motor(150, 1, 150, 0)
+            piwars2024.set_speed(50, 50)
         # reverse...
         if value == 32767:
-            piwars2024.set_motor(150, 0, 150, 1)
+            piwars2024.set_speed(-50, -50)
         # stop...
         if value == 0:
-            piwars2024.set_motor(0, 0, 0, 0)
+            piwars2024.set_speed(0, 0)
     
     elif button == DPAD_LEFTRIGHT and action == 2:
         # left...
         if value == -32767:
-            piwars2024.set_motor(150, 1, 150, 1)
+            piwars2024.set_speed(50, -50)
         # right...
         if value == 32767:
-            piwars2024.set_motor(150, 0, 150, 0)
+            piwars2024.set_speed(-50, 50)
         # stop...
         if value == 0:
-            piwars2024.set_motor(0, 0, 0, 0)
+            piwars2024.set_speed(0, 0)
 
     elif button == JOY1_UPDOWN:
         # value is -32767 to 32767
         # convert to -255 to 255
-        speed = -int(value/32767*255)
-        drive(speed, turning)
+        speed = int(value/32767*50)
+        piwars2024.set_speed(speed, speed)
 
     elif button == JOY2_LEFTRIGHT:
         # value is -32767 to 32767
         # convert to -255 to 255
-        turning = int(value/32767*255)
+        turning = int(value/32767*50)
         drive(speed, turning)
 
 

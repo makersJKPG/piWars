@@ -1,7 +1,7 @@
 import io
 import time
 import threading
-import picamera
+from picamera2 import Picamera2
 
 import numpy as np
 import cv2
@@ -81,22 +81,26 @@ class camControl(threading.Thread):
 
     def run(self):
         global pool, width, height
-        with picamera.PiCamera() as camera:
-            pool = [ImageProcessor(showSource=self.showSource) for i in range (4)]
-            print("pool={}".format(len(pool)))
-            camera.resolution = (width, height)
-            # Set the framerate appropriately; too fast and the image processors
-            # will stall the image pipeline and crash the script
-            camera.framerate = 10
-            camera.raw_format = 'bgr'
-            camera.resolution = (width, height)
-            camera.vflip = self.vflip
-            #camera.start_preview()
-            print("Calibrating camera")
-            time.sleep(3)
-            print("Camera calibration done")
-            camera.exposure_mode = 'off'
-            camera.capture_sequence(streams(), format="bgr", use_video_port=True)
+
+        #pool = [ImageProcessor(showSource=self.showSource) for i in range (4)]
+        #print("pool={}".format(len(pool)))
+        
+        picam2 = Picamera2()
+
+        picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}))
+        picam2.start()
+        
+        while True:
+            im = picam2.capture_array()
+            im = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+            print("image")
+            cv2.imshow("source", im)
+            cv2.waitKey(1)
+            #if callback is not None:
+            #    print("calling callback")
+            #    callback(im)
+
+        picam2.stop()
 
         # Shut down the processors in an orderly fashion
         while pool:

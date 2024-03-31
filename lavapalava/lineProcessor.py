@@ -1,7 +1,8 @@
 import cv2
-from motorControl import *
+import piwars2024
 from pid import *
 import numpy as np
+import time
 
 class lineProcessor:
 
@@ -39,7 +40,8 @@ class lineProcessor:
                 "line_detect_threshold": 100
             }
 
-        self.motor = motorControl(disable_motors=self.params["disable_motors"])
+#        self.motor = motorControl(disable_motors=self.params["disable_motors"])
+        piwars2024.set_mode(1)
 
         self.route_section = 0
         self.route_timer = None
@@ -67,6 +69,8 @@ class lineProcessor:
         return resized
 
     def process3(self, img):
+
+        print("process3()")
 
         img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
@@ -102,12 +106,12 @@ class lineProcessor:
                     "cY": cY,
                     "area": area
                 })
-                #print("Contour: A={}, x,y={},{}".format(area, cX, cY))
+                print("Contour: A={}, x,y={},{}".format(area, cX, cY))
                 cv2.circle(img, (cX, cY), 5, 127, 1)
 
         # select route
         numroutes = len(routes)
-        #print("Routes available: {}".format(numroutes))
+        print("Routes available: {}".format(numroutes))
 
         if self.start_time is not None and time.time() - self.start_time > 10:
             print("Start time passed")
@@ -167,22 +171,18 @@ class lineProcessor:
             output = self.pid.update(setpoint, measurement)
             adj_r = -output if output < 0 else 0
             adj_l = output if output > 0 else 0
-            #print("measurement={}, output={}".format(measurement, output))
-            self.motor.throttle(1.0 - adj_r, 1.0 - adj_l)
+            print("measurement={}, output={}".format(measurement, output))
+            r_speed = int(55 * (1.0 - adj_r))
+            l_speed = int(55 * (1.0 - adj_l))
+            piwars2024.set_speed(l_speed, r_speed)
         
             #self.prev_routes = len(routes)
         else:
-            self.motor.throttle(0, 0)
+            pass
+            piwars2024.set_speed(0, 0)
 
         cv2.imshow("mask", mask)
         cv2.imshow("image", img)
-
-        key = cv2.waitKey(1)
-        if key == 'q':
-            print("Q")
-            return True
-        else:
-            return False
 
     def process2(self, img):
 
@@ -245,11 +245,12 @@ class lineProcessor:
                 adj_r = -output if output < 0 else 0
                 adj_l = output if output > 0 else 0
                 #print("measurement={}, output={}".format(measurement, output))
-                self.motor.throttle(1.0 - adj_l, 1.0 - adj_r)
+                ## self.motor.throttle(1.0 - adj_l, 1.0 - adj_r)
         
             self.prev_routes = len(routes)
         else:
-            self.motor.throttle(0, 0)
+            pass
+            ## self.motor.throttle(0, 0)
 
         cv2.imshow("mask", mask)
         cv2.imshow("image", img)
@@ -291,9 +292,10 @@ class lineProcessor:
             adj_r = -output if output < 0 else 0
             adj_l = output if output > 0 else 0
             print("measurement={}, output={}".format(measurement, output))
-            self.motor.throttle(1.0 - adj_l, 1.0 - adj_r)
+            ## self.motor.throttle(1.0 - adj_l, 1.0 - adj_r)
         else:
-            self.motor.throttle(0, 0)
+            pass
+            ## self.motor.throttle(0, 0)
 
         key = cv2.waitKey(1)
         if key == 'q':
