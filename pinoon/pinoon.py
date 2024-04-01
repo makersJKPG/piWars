@@ -23,22 +23,24 @@ def drive(speed, turning):
     rval = abs(speed)
     if speed > 0:
         ldir = 1
-        rdir = 1
+        rdir = 0
     else:
         ldir = 0
-        rdir = 0
+        rdir = 1
 
-    angle = turning*math.pi/2/255
+    angle = turning*math.pi/2/200
     scale = math.cos(angle)
     if angle > 0:
-        lval = int(lval * scale)
+        rval = int(lval * scale)
     else:
-        rval = int(rval * scale)
+        lval = int(rval * scale)
 
     piwars2024.set_motor(lval, ldir, rval, rdir)
 
 turning = 0
 speed = 0
+
+piwars2024.set_mode(2)
 
 while True:
         
@@ -46,15 +48,15 @@ while True:
     styring = struct.unpack(pack_format, event)
     
     milli, value, action, button = styring
-    print("milli={} value={} action={} button={}".format(milli, value, action, button))
+    #print("milli={} value={} action={} button={}".format(milli, value, action, button))
     
     if button == DPAD_UPDOWN and action == 2:
         # forward...
         if value == -32767:
-            piwars2024.set_motor(150, 1, 150, 0)
+            piwars2024.set_motor(255, 1, 255, 0)
         # reverse...
         if value == 32767:
-            piwars2024.set_motor(150, 0, 150, 1)
+            piwars2024.set_motor(255, 0, 255, 1)
         # stop...
         if value == 0:
             piwars2024.set_motor(0, 0, 0, 0)
@@ -62,10 +64,10 @@ while True:
     elif button == DPAD_LEFTRIGHT and action == 2:
         # left...
         if value == -32767:
-            piwars2024.set_motor(150, 1, 150, 1)
+            piwars2024.set_motor(255, 0, 255, 0)
         # right...
         if value == 32767:
-            piwars2024.set_motor(150, 0, 150, 0)
+            piwars2024.set_motor(255, 1, 255, 1)
         # stop...
         if value == 0:
             piwars2024.set_motor(0, 0, 0, 0)
@@ -73,15 +75,17 @@ while True:
     elif button == JOY1_UPDOWN:
         # value is -32767 to 32767
         # convert to -255 to 255
-        speed = -int(value/32767*255)
+        speed = -int(value/32767*200)
         drive(speed, turning)
+        #print("speed={}, turning={}".format(speed, turning))
+
 
     elif button == JOY2_LEFTRIGHT:
         # value is -32767 to 32767
         # convert to -255 to 255
-        turning = int(value/32767*255)
+        turning = int(value/32767*200)
         drive(speed, turning)
-
+        #print("speed={}, turning={}".format(speed, turning))
 
     elif button == LEFT_TRIGGER:
         # value is -32767 to 32767

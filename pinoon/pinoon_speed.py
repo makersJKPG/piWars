@@ -44,47 +44,73 @@ speed = 0
 piwars2024.set_mode(1)
 
 while True:
-        
+    
+    update_speed = False
+
     event = file.read(event_size)
     styring = struct.unpack(pack_format, event)
     
     milli, value, action, button = styring
-    print("milli={} value={} action={} button={}".format(milli, value, action, button))
+    #print("milli={} value={} action={} button={}".format(milli, value, action, button))
     
     if button == DPAD_UPDOWN and action == 2:
         # forward...
         if value == -32767:
-            piwars2024.set_speed(50, 50)
+            rspeed = -50
+            lspeed = -50
+            update_speed = True
         # reverse...
         if value == 32767:
-            piwars2024.set_speed(-50, -50)
+            rspeed = 50
+            lspeed = 50
+            update_speed = True
         # stop...
         if value == 0:
-            piwars2024.set_speed(0, 0)
+            rspeed = 0
+            lspeed = 0
+            update_speed = True
     
     elif button == DPAD_LEFTRIGHT and action == 2:
         # left...
         if value == -32767:
-            piwars2024.set_speed(50, -50)
+            rspeed = -50
+            lspeed = 50
+            update_speed = True
         # right...
         if value == 32767:
-            piwars2024.set_speed(-50, 50)
+            rspeed = 50
+            lspeed = -50
+            update_speed = True
         # stop...
         if value == 0:
-            piwars2024.set_speed(0, 0)
+            rspeed = 0
+            lspeed = 0
+            update_speed = True
 
     elif button == JOY1_UPDOWN:
         # value is -32767 to 32767
         # convert to -255 to 255
         speed = int(value/32767*50)
-        piwars2024.set_speed(speed, speed)
+        rspeed = speed
+        lspeed = speed
+        update_speed = True
 
     elif button == JOY2_LEFTRIGHT:
         # value is -32767 to 32767
         # convert to -255 to 255
-        turning = int(value/32767*50)
-        drive(speed, turning)
+        turning = int(value/32767*255)
 
+        angle = turning*math.pi/2/255
+        scale = math.cos(angle)
+    
+        if angle > 0:
+            rspeed = int(speed * scale)
+            lspeed = int(speed)
+        else:
+            rspeed = int(speed)
+            lspeed = int(speed * scale)
+
+        update_speed = True
 
     elif button == LEFT_TRIGGER:
         # value is -32767 to 32767
@@ -100,6 +126,9 @@ while True:
         val = int((value + 32767)*255/2/32767)
         piwars2024.set_servo(2, val)
 
-    #print(piwars2024.get_encoder())
+    if update_speed:
+        print("lspeed={}, rspeed={}".format(lspeed, rspeed))
+        piwars2024.set_speed(lspeed, rspeed)
+
 
 

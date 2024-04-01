@@ -27,7 +27,7 @@ def detect_red():
 
         red_only = cv2.bitwise_and(im, im, mask=mask)
 
-        im = cv2.flip(im, 0)
+        #im = cv2.flip(im, -1)
 
         cv2.imshow('Red Color Detection', im)
         
