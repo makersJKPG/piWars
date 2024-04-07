@@ -71,7 +71,7 @@ def image_process(img):
 
         piwars2024.set_speed(lval, rval)
     else:
-        piwars2024.set_speed(0, 0)
+        piwars2024.set_speed(-10, 10)
         #pass
 
     cv2.imshow("mask", mask)
@@ -108,16 +108,17 @@ pid = piwars2024.pid(0.075, 0.00, 0.00, T, tau, limMin, limMax, limMinInt, limMa
 
 jr = piwars2024.JoyReader()
 
+speed = -10
+turning = 0
+
 picam2 = Picamera2()
 picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
 picam2.start()
 
-piwars2024.set_mode(1)
+piwars2024.set_mode(1) # speed control mode
 time.sleep(2)
 
-piwars2024.accelerate(0, -10, steps=3, intervaltime=0.1)
-speed = -20
-turning = 0
+piwars2024.set_speed(0, 0)
 
 running = True
 

@@ -73,10 +73,8 @@ def set_speed(s1, s2):
         s2 = 100
     if s2 < -100:
         s2 = -100
-    speed1 = struct.pack('h', s1)
-    speed2 = struct.pack('h', s2)
 
-    cmd = [ 0xBD, speed1[1], speed1[0], speed2[1], speed2[0] ]
+    cmd = [ 0xBD, s1, s2 ]
     send_spi_cmd(cmd)
 
 # mode = 1 = speed control
@@ -99,6 +97,10 @@ def get_encoder():
     value2 = (cs[6]<<24) + (cs[5]<<16) + (cs[8]<<8) + cs[7]
     value2 = struct.unpack("i", value2.to_bytes(4, "little"))[0]
     return value1, value2
+
+def reset_encoder():
+    cmd = [ 0xCA, 0 ]
+    cs = send_spi_cmd(cmd)
 
 def makeint32(val):
     if val < 32767:
@@ -138,7 +140,16 @@ def get_imu_float_fifo():
     imudata = struct.unpack("<Hfffffff", ba)
     return imudata
 
-
 def shutdown():
     spi.close()
+
+def accelerate(startspeed, endspeed, steps=10, intervaltime=0.1):
+    stepchange = int((endspeed-startspeed) / steps)
+    for i in range(0, steps+1):
+        speed = startspeed + i*stepchange
+        set_speed(speed, speed)
+        print("speed={}".format(speed))
+        time.sleep(intervaltime)
+
+
 

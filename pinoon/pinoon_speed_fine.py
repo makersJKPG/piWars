@@ -40,10 +40,8 @@ def drive(speed, turning):
 turning = 0
 speed = 0
 
-piwars2024.set_mode(1)  # speed control mode
-#piwars2024.set_mode(3)  # fine speed control mode
-
-piwars2024.set_speed(0, 0)
+# set fine speed control
+piwars2024.set_mode(3)
 
 while True:
     
@@ -58,15 +56,15 @@ while True:
     if button == DPAD_UPDOWN and action == 2:
         # forward...
         if value == -32767:
-            rspeed = -30
-            lspeed = -30
+            rspeed = -50
+            lspeed = -50
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
        # reverse...
         if value == 32767:
-            rspeed = 30
-            lspeed = 30
+            rspeed = 50
+            lspeed = 50
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
@@ -112,8 +110,7 @@ while True:
         # convert to -255 to 255
         turning = int(value/32767*255)
 
-        if turning > 20 or turning < -20:
-            update_speed = True
+        update_speed = True
 
     elif button == LEFT_TRIGGER:
         # value is -32767 to 32767
@@ -142,4 +139,6 @@ while True:
 
         print("lspeed={}, rspeed={}".format(lspeed, rspeed))
         piwars2024.set_speed(lspeed, rspeed)
+
+
 

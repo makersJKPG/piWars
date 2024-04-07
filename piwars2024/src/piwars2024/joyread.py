@@ -9,6 +9,10 @@ class JoyReader(threading.Thread):
         self.eventlist = []
         self.start()
 
+    def stop(self):
+        self.terminated = True
+        self.join()
+
     def run(self):
         print("In joy reader thread...")
         pack_format = "ihBB"
