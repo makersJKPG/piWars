@@ -25,9 +25,9 @@ def send_spi_cmd(cmd):
         else:
             sendlist.append(val)
 
-    print("sending: {}".format(sendlist))
+    #print("sending: {}".format(sendlist))
     cs = spi.xfer2(sendlist)
-    print("received: {}".format(cs))
+    #print("received: {}".format(cs))
     cs.pop(0)   # remove byte from start byte 0xa5
     return cs
 

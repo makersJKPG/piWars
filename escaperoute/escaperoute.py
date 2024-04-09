@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 from picamera2 import Picamera2
 import piwars2024
+import imuread
 
 def boxPos(mask):
     # calculate moments of binary image
@@ -103,10 +104,19 @@ limMinInt = -1.0
 limMaxInt = 1.0
 T = 0.02
 tau = 0.0
-
 pid = piwars2024.pid(0.075, 0.00, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
 
+limMin = -30.0
+limMax = 30.0
+limMinInt = -1.0
+limMaxInt = 1.0
+T = 0.02
+tau = 0.0
+imu_pid = piwars2024.pid(0.10, 0.00, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
+
 jr = piwars2024.JoyReader()
+
+imu = imuread.ImuReader()
 
 speed = -10
 turning = 0
@@ -118,25 +128,67 @@ picam2.start()
 piwars2024.set_mode(1) # speed control mode
 piwars2024.set_speed(0, 0)
 time.sleep(2)
-piwars2024.reset_encoder()
 
-piwars2024.set_speed(-20, -25)
+lval = 0
+rval = 0
+piwars2024.set_speed(0, 0)
 
-running = True
-while running:
-    m1, m2 = piwars2024.get_encoder()
-    print("m1={}, m2={}".format(m1, m2))
-    if abs(m1) > 3000:
-        piwars2024.set_speed(0, 0)
-        running = False
+def turn(degrees):
+    setpoint = imu.yaw + degrees
+    speed = 0.0
+    piwars2024.set_speed(0, 0)
+    while abs(setpoint - imu.yaw) > 1.0:
+        measurement = imu.yaw
+        # pid regulates a turning angle / direction which should nominally be 0 degrees
+        output = imu_pid.update(setpoint, measurement)
+        speed = speed + output
+        if speed > 255:
+            speed = 255
+        if speed < -255:
+            speed = -255
+        print("setpoint={}, measurement={}, error={}, output={}".format(setpoint, measurement, imu_pid.prevError, output))
+        piwars2024.set_speed(int(round(output)), -int(round(output)))
+        time.sleep(0.01)
+    piwars2024.set_speed(0, 0)
 
-time.sleep(2)
-m1, m2 = piwars2024.get_encoder()
-print("m1={}, m2={}".format(m1, m2))
+def drive_distance(distance):
+    piwars2024.set_speed(0, 0)
+    time.sleep(0.5)
+    piwars2024.reset_encoder()
+    m1 = 0
+    m2 = 0
+    piwars2024.set_speed(-15, -15)
+    while abs(m1) < distance:
+        m1, m2 = piwars2024.get_encoder()
+        print("m1={}, m2={}".format(m1, m2))
+    piwars2024.set_speed(0, 0)
+
+
+drive_distance(2000)
+turn(-90)
+drive_distance(2000)
+turn(-90)
+drive_distance(2000)
+turn(90)
+drive_distance(2000)
+turn(90)
+drive_distance(2000)
+turn(-90)
+drive_distance(2000)
+
+#running = True
+#while running:
+#    while jr.events_available() != 0:
+#        event = jr.get_event()
+#        if event["value"] == -32767 and event["action"] == 2 and event["button"] == 7:
+#            print("pressed up")
+#            turn(90)
+
+time.sleep(0.5)
+piwars2024.set_motor(0, 0, 0, 0)
+piwars2024.set_mode(2)
 
 exit(0)
-
-
 
 while running:
     im = picam2.capture_array()
