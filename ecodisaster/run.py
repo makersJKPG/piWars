@@ -42,8 +42,10 @@ while testRunner.cam.readSuccess:
         cl=find['class']
         if cl==1:
             c=(0,255,0)
-        if cl==2:
+        elif cl==2:
             c=(0,0,255)        
+        else:
+            c=(150,150,150)
         cv.rectangle(frame,(x,y),(x+w,y+h),c,3)
     else:
         print('no inference')
