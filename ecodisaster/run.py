@@ -16,7 +16,7 @@ testRunner=Runner()
 # cam.setMaskCreation(True)
 # time.sleep(.05)
 time.sleep(1)
-testRunner.setStartSignal(True)
+#testRunner.setStartSignal(True)
 
 # def zeroIn(obj,goal):
 #     delta=goal-obj
@@ -30,7 +30,25 @@ testRunner.setStartSignal(True)
 gCenter=testRunner.cam.globalCenter
 while testRunner.cam.readSuccess:
     frame=testRunner.cam.getFrame()
-    centerPoint,targetOffset,targetArea,targetSize,startPoint=testRunner.cam.getBlueCenter()
+    
+    find = testRunner.cam.runInference()
+
+    if not find=={}:
+        print('inference')
+        x=find['x']
+        y=find['y']
+        w=find['w']
+        h=find['h']
+        cl=find['class']
+        if cl==1:
+            c=(0,255,0)
+        if cl==2:
+            c=(0,0,255)        
+        cv.rectangle(frame,(x,y),(x+w,y+h),c,3)
+    else:
+        print('no inference')
+    
+    #centerPoint,targetOffset,targetArea,targetSize,startPoint=testRunner.cam.getBlueCenter()
     # print('startP:',startPoint)
 
     # x,y=(0,1)
@@ -78,7 +96,7 @@ while testRunner.cam.readSuccess:
     # cv.putText(roi,trap,(15,15),1,1,(222,222,222),1,)
     # roi=testRunner.debugFrame
 
-    ycenterPoint,ytargetOffset,ytargetArea,ytargetSize,ystartPoint=testRunner.cam.getYellowCenter()
+    """     ycenterPoint,ytargetOffset,ytargetArea,ytargetSize,ystartPoint=testRunner.cam.getYellowCenter()
     gcenterPoint,gtargetOffset,gtargetArea,gtargetSize,gstartPoint=testRunner.cam.getGreenCenter()
     rcenterPoint,rtargetOffset,rtargetArea,rtargetSize,rstartPoint=testRunner.cam.getRedCenter()
     pt2=(startPoint[0]+targetSize[0],startPoint[1]+targetSize[1])
@@ -114,7 +132,7 @@ while testRunner.cam.readSuccess:
         cv.imshow('green',testRunner.debugGreenMask)
     if not np.array_equal(testRunner.debugRedMask,[]):
         cv.imshow('red',testRunner.debugRedMask)
-
+ """
     cv.imshow('Normal frame',frame)
 
     if cv.waitKey(1)==ord('q'):
