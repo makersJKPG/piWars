@@ -6,7 +6,7 @@ from cv2 import (
     #CAP_PROP_FPS,CAP_PROP_FOURCC,
     FONT_HERSHEY_COMPLEX,COLOR_RGB2BGR,MORPH_OPEN,
     MORPH_CLOSE,CHAIN_APPROX_SIMPLE,RETR_EXTERNAL,COLOR_BGR2HSV)
-from numpy import array,array_equal,uint8,ones,zeros,asarray
+from numpy import array,array_equal,uint8,ones,zeros,asarray,int64
 from math import sqrt
 
 import tensorflow as tf
@@ -24,9 +24,9 @@ class Cam:
     def __init__(
             self,
             #camNum=0,
-            capFormat='XRGB8888',
-            capWidth=int(640*.25),
-            capHeight=int(480*.25),
+            capFormat='RGB888',
+            capWidth=int(640),
+            capHeight=int(480),
             #fps=30,
             #codec=VideoWriter_fourcc(*'MJPG')
             ):
@@ -136,18 +136,25 @@ class Cam:
 
     def runInference(self):
         image=self.frame
-        print('image###############################')
-        print(image)
+      #  print('image###############################')
+      #  print(image)
         inputTensor=tf.convert_to_tensor(asarray(image))
-        print('converted to tensor###############################')
-        print(inputTensor)
+      #  print('converted to tensor###############################')
+      #  print(inputTensor)
         inputTensor=inputTensor[tf.newaxis,...]
-        print('new axis###############################')
-        print(inputTensor)
+      #  print('new axis###############################')
+      #  print(inputTensor)
         outputDict=self.inferenceModel(inputTensor)
         largestArea=0
         largestAreaCenter=(0,0)
         x,y,w,h=(self.width*10,self.height*10,0,0)
+
+        numDetections=int(outputDict.pop('num_detections'))
+        outputDict={key:value[0, :numDetections].numpy()
+                    for key,value in outputDict.items()}
+        outputDict['num_detections']=numDetections
+        outputDict['detection_classes']=outputDict['detection_classes'].astype(int64)
+    
 
 #        if 'detection_masks' in outputDict:
 #            detectionMasksReframed=util_ops.reframe_box_masks_to_image_masks(
@@ -157,29 +164,33 @@ class Cam:
 #            detectionMasksReframed=tf.cast(detectionMasksReframed>.5,tf.uint8)
 #            outputDict['detection_masks_refraimed']=detectionMasksReframed.numpy()
 
-        for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_scores'],outputDict['detection_classes']):
-            if cl==1 and score>90 or cl==2 and score>75:
-                x,y=((int(box[1]*image.shape[1])),(int(box[0]*image.shape[0])))
-                w,h=((int(box[3]*image.shape[1])),(int(box[2]*image.shape[0])))
-                area=(w-x)*(h-y)
-                if area>largestArea:
-                    rw,rh,rx,ry=(w,h,x,y)
-                    largestArea=area
-                    cx,cy=(int(((w-x)*.5)+x),int(((h-y)*.5)+y))
-                    largestAreaCenter=(cx,cy)
-                    offset=int(sqrt(pow(cx,2)+pow(cy,2))-
-                        sqrt(pow(self.globalCenter[0],2)+pow(self.globalCenter[1],2)))
-        return {
-            'class':cl,
-            'largestArea':largestArea,
-            'largestAreaCenter':largestAreaCenter,
-            'offset':offset,
-            'w':rw,
-            'h':rh,
-            'x':rx,
-            'y':ry         
-        }
 
+        if ('detection_boxes' in outputDict and 
+            'detection_scores' in outputDict and 
+            'detection_classes' in outputDict):
+            for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_scores'],outputDict['detection_classes']):
+                if score>.75:
+                    x,y=((int(box[1]*image.shape[1])),(int(box[0]*image.shape[0])))
+                    w,h=((int(box[3]*image.shape[1])),(int(box[2]*image.shape[0])))
+                    area=(w-x)*(h-y)
+                    if area>largestArea:
+                        rw,rh,rx,ry=(w,h,x,y)
+                        largestArea=area
+                        cx,cy=(int(((w-x)*.5)+x),int(((h-y)*.5)+y))
+                        largestAreaCenter=(cx,cy)
+                        offset=int(sqrt(pow(cx,2)+pow(cy,2))-
+                            sqrt(pow(self.globalCenter[0],2)+pow(self.globalCenter[1],2)))
+            return {
+                'class':cl,
+                'largestArea':largestArea,
+                'largestAreaCenter':largestAreaCenter,
+                'offset':offset,
+                'w':rw,
+                'h':rh,
+                'x':rx,
+                'y':ry         
+            }
+        return {}
 
     #Search for object in mask, calculates center of object using blounding box coordinates.
     #Returns center coordinates of largest object and offset from view (global) center.
