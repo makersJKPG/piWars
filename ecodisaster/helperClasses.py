@@ -6,9 +6,13 @@ from cv2 import (
     #CAP_PROP_FPS,CAP_PROP_FOURCC,
     FONT_HERSHEY_COMPLEX,COLOR_RGB2BGR,MORPH_OPEN,
     MORPH_CLOSE,CHAIN_APPROX_SIMPLE,RETR_EXTERNAL,COLOR_BGR2HSV)
-from numpy import array,array_equal,uint8,ones,zeros
+from numpy import array,array_equal,uint8,ones,zeros,asarray
 from math import sqrt
 
+import tensorflow as tf
+#from object_detection.utils import ops as util_ops
+#from object_detection.utils import label_map_util
+#from object_detection.utils import visualization_utils as vis_utils
 
 DEBUGGING=True
 if DEBUGGING:
@@ -60,10 +64,17 @@ class Cam:
         self.readSuccess=False
         self.createMasks=False
         self.emptyFrame=zeros((capWidth,capHeight),uint8)
+        self.inference={}
         putText(
             self.emptyFrame,'Error reading frame',(25,25), 
             FONT_HERSHEY_COMPLEX,1,(255,255,255), 1)
         self.run=True
+        self.inferenceModel=tf.saved_model.load(
+            'ecodisaster/barrel_inference_graph/saved_model/')
+       # self.inferenceThread=t(target=self.runInference,args=(),daemon=True)
+       # self.inferenceThread.start()        
+#        self.categoryIndex=label_map_util.create_category_index_from_labelmap(
+#            'ecodisaster/barrel_inference_graph/labelmap.pbtxt',use_display_name=True)
         self.capThread=t(target=self.captureFrame,args=(),daemon=True)
         # self.cvtThread=t(target=self.createColorMasks,args=(),daemon=True)
         # self.cvtThread.start()
@@ -71,12 +82,13 @@ class Cam:
         #print('Width:\t'+str(self.cap.get(CAP_PROP_FRAME_WIDTH)))
         #print('Height:\t'+str(self.cap.get(CAP_PROP_FRAME_HEIGHT)))
 
+
     def setMaskCreation(self,createMask):
         self.createMasks=createMask
 
-    def setSize(self,newWidth,newHeight):
-        self.cap.set(CAP_PROP_FRAME_WIDTH,newWidth)
-        self.cap.set(CAP_PROP_FRAME_HEIGHT,newHeight)
+  #  def setSize(self,newWidth,newHeight):
+  #      self.cap.set(CAP_PROP_FRAME_WIDTH,newWidth)
+  #      self.cap.set(CAP_PROP_FRAME_HEIGHT,newHeight)
 
     def getFrame(self):
         if self.readSuccess:
@@ -84,8 +96,8 @@ class Cam:
         else:
             return cvtColor(self.emptyFrame,COLOR_RGB2BGR)
 
-    def getFrameSize(self):
-        return (self.cap.get(CAP_PROP_FRAME_WIDTH),self.cap.get(CAP_PROP_FRAME_HEIGHT))
+  #  def getFrameSize(self):
+  #      return (self.cap.get(CAP_PROP_FRAME_WIDTH),self.cap.get(CAP_PROP_FRAME_HEIGHT))
 
     # Can only be used after createMasks have been set to True (using function setMaskCreation)
     def getRedMask(self):
@@ -121,6 +133,53 @@ class Cam:
         return morphologyEx(self.yellowMask,MORPH_CLOSE,self.kernel)
     def getYellowCenter(self):
         return self.yellowCenter
+
+    def runInference(self):
+        image=self.frame
+        print('image###############################')
+        print(image)
+        inputTensor=tf.convert_to_tensor(asarray(image))
+        print('converted to tensor###############################')
+        print(inputTensor)
+        inputTensor=inputTensor[tf.newaxis,...]
+        print('new axis###############################')
+        print(inputTensor)
+        outputDict=self.inferenceModel(inputTensor)
+        largestArea=0
+        largestAreaCenter=(0,0)
+        x,y,w,h=(self.width*10,self.height*10,0,0)
+
+#        if 'detection_masks' in outputDict:
+#            detectionMasksReframed=util_ops.reframe_box_masks_to_image_masks(
+#                outputDict['detecion_masks'],outputDict['detection_boxes'],
+#                image.shape[0],
+#                image.shape[1])
+#            detectionMasksReframed=tf.cast(detectionMasksReframed>.5,tf.uint8)
+#            outputDict['detection_masks_refraimed']=detectionMasksReframed.numpy()
+
+        for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_scores'],outputDict['detection_classes']):
+            if cl==1 and score>90 or cl==2 and score>75:
+                x,y=((int(box[1]*image.shape[1])),(int(box[0]*image.shape[0])))
+                w,h=((int(box[3]*image.shape[1])),(int(box[2]*image.shape[0])))
+                area=(w-x)*(h-y)
+                if area>largestArea:
+                    rw,rh,rx,ry=(w,h,x,y)
+                    largestArea=area
+                    cx,cy=(int(((w-x)*.5)+x),int(((h-y)*.5)+y))
+                    largestAreaCenter=(cx,cy)
+                    offset=int(sqrt(pow(cx,2)+pow(cy,2))-
+                        sqrt(pow(self.globalCenter[0],2)+pow(self.globalCenter[1],2)))
+        return {
+            'class':cl,
+            'largestArea':largestArea,
+            'largestAreaCenter':largestAreaCenter,
+            'offset':offset,
+            'w':rw,
+            'h':rh,
+            'x':rx,
+            'y':ry         
+        }
+
 
     #Search for object in mask, calculates center of object using blounding box coordinates.
     #Returns center coordinates of largest object and offset from view (global) center.
@@ -211,7 +270,7 @@ class Cam:
 
 class MotorControler:
     from enum import Enum
-    import set_motor,get_encoder
+    #import set_motor,get_encoder
     class Mode(Enum):
         MANUAL=0
         AUTONOMOUS=1
@@ -241,7 +300,7 @@ class MotorControler:
         self.turnRadius=turnRadius
         self.move=(0,0)
         self.obstasclePos=(0,0)
-        self.startingPoint=self.get_encoder() #Left,Right encoder offset
+        #self.startingPoint=self.get_encoder() #Left,Right encoder offset
         self.targetCalculation=0
         if self.mode==self.Mode.AUTONOMOUS:
             self.moveThread=t(target=self.continuousMovement,args=(),daemon=True)
@@ -346,15 +405,13 @@ class Runner:
                  sortNum=12,
                  offsetMargin=10,
                  heldObject=70,
-                 run=True,
-                 cameraSetup=(),
-                 motorControlerSetup=()):
+                 run=True):
         if DEBUGGING:
             self.debugFrame=[]
             self.debugGreenMask=[]
             self.debugRedMask=[]
-        self.cam=Cam(cameraSetup[0],cameraSetup[1],cameraSetup[2],cameraSetup[3])
-        self.motorControler=MotorControler(motorControlerSetup[0],motorControlerSetup[1],motorControlerSetup[2],motorControlerSetup[3])
+        self.cam=Cam()
+        self.motorControler=MotorControler()
         self.rotation=(
             0,  #Left num steps
             0)  #Right num steps
