@@ -8,11 +8,8 @@ from cv2 import (
     MORPH_CLOSE,CHAIN_APPROX_SIMPLE,RETR_EXTERNAL,COLOR_BGR2HSV)
 from numpy import array,array_equal,uint8,ones,zeros,asarray,int64
 from math import sqrt
-
+from libcamera import Transform
 import tensorflow as tf
-#from object_detection.utils import ops as util_ops
-#from object_detection.utils import label_map_util
-#from object_detection.utils import visualization_utils as vis_utils
 
 DEBUGGING=True
 if DEBUGGING:
@@ -43,7 +40,8 @@ class Cam:
  #               fps=modes['fps']
  #               capFormat=modes['format']
  #       print('fps=',fps,'format=',capFormat)
-        self.cap.configure(self.cap.create_preview_configuration(main={"format":capFormat,"size": (capWidth,capHeight)}))
+
+        self.cap.configure(self.cap.create_preview_configuration(main={"format":capFormat,"size": (capWidth,capHeight)},transform=Transform(hflip=1, vflip=1)))
         self.cap.start()
         self.longestPossibleOffset=sqrt(pow(capWidth*.5,2)+pow(capHeight*.5,2))
         self.globalCenter=(int(capWidth*.5),int(capHeight*.5))
@@ -70,7 +68,7 @@ class Cam:
             FONT_HERSHEY_COMPLEX,1,(255,255,255), 1)
         self.run=True
         self.inferenceModel=tf.saved_model.load(
-            'ecodisaster/barrel_inference_graph/saved_model/')
+            'ecodisaster/barrel_inference_graph/saved_model')
        # self.inferenceThread=t(target=self.runInference,args=(),daemon=True)
        # self.inferenceThread.start()        
 #        self.categoryIndex=label_map_util.create_category_index_from_labelmap(
@@ -136,19 +134,16 @@ class Cam:
 
     def runInference(self):
         image=self.frame
-      #  print('image###############################')
-      #  print(image)
         inputTensor=tf.convert_to_tensor(asarray(image))
-      #  print('converted to tensor###############################')
-      #  print(inputTensor)
         inputTensor=inputTensor[tf.newaxis,...]
-      #  print('new axis###############################')
-      #  print(inputTensor)
+
         outputDict=self.inferenceModel(inputTensor)
         largestArea=0
         largestAreaCenter=(0,0)
-        x,y,w,h=(self.width*10,self.height*10,0,0)
-
+        x,y,w,h=(0,0,0,0)
+        rw,rh,rx,ry=(0,0,0,0)
+        cla=0
+        offset=0
         numDetections=int(outputDict.pop('num_detections'))
         outputDict={key:value[0, :numDetections].numpy()
                     for key,value in outputDict.items()}
@@ -168,11 +163,12 @@ class Cam:
         if ('detection_boxes' in outputDict and 
             'detection_scores' in outputDict and 
             'detection_classes' in outputDict):
-            for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_scores'],outputDict['detection_classes']):
-                if score>.75:
+            for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_classes'],outputDict['detection_scores']):
+                if score>.5 and (cl==1 or cl==2):
                     x,y=((int(box[1]*image.shape[1])),(int(box[0]*image.shape[0])))
                     w,h=((int(box[3]*image.shape[1])),(int(box[2]*image.shape[0])))
                     area=(w-x)*(h-y)
+                    cla=cl
                     if area>largestArea:
                         rw,rh,rx,ry=(w,h,x,y)
                         largestArea=area
@@ -181,7 +177,7 @@ class Cam:
                         offset=int(sqrt(pow(cx,2)+pow(cy,2))-
                             sqrt(pow(self.globalCenter[0],2)+pow(self.globalCenter[1],2)))
             return {
-                'class':cl,
+                'class':cla,
                 'largestArea':largestArea,
                 'largestAreaCenter':largestAreaCenter,
                 'offset':offset,
@@ -281,7 +277,7 @@ class Cam:
 
 class MotorControler:
     from enum import Enum
-    #import set_motor,get_encoder
+    import set_motor,get_encoder
     class Mode(Enum):
         MANUAL=0
         AUTONOMOUS=1
