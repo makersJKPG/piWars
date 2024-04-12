@@ -102,11 +102,20 @@ def reset_encoder():
     cmd = [ 0xCA, 0 ]
     cs = send_spi_cmd(cmd)
 
+def calibrate_imu():
+    cmd = [ 0xCB, 0 ]
+    cs = send_spi_cmd(cmd)
+
 def makeint32(val):
     if val < 32767:
         return val
     else:
         return -(65536-val)
+
+def imu_turn(turnangle):
+    cmd = struct.pack(">Bh", 0xCC, int(turnangle))
+    print("sending: {}".format(cmd))
+    send_spi_cmd(cmd)
 
 def get_imu():
     cmd = [0xAB, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] 

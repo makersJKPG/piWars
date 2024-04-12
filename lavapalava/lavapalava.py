@@ -4,6 +4,7 @@ import struct
 import cv2
 import numpy as np
 from picamera2 import Picamera2
+import libcamera
 import piwars2024
 
 def boxPos(mask):
@@ -44,7 +45,8 @@ def image_process(img):
 
     height, width = img.shape
 
-    ret, mask = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY_INV)
+    #ret, mask = cv2.threshold(img, 110, 255, cv2.THRESH_BINARY_INV)
+    ret, mask = cv2.threshold(img, 150, 255, cv2.THRESH_BINARY)
     pos = boxPos(mask) if cv2.countNonZero(mask) > params["line_detect_threshold"] else None
 
     if pos is not None:
@@ -109,8 +111,18 @@ pid = piwars2024.pid(0.075, 0.00, 0.00, T, tau, limMin, limMax, limMinInt, limMa
 jr = piwars2024.JoyReader()
 
 picam2 = Picamera2()
-picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
+#picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
+picam2.configure(picam2.create_preview_configuration(
+    main = {
+        "format": 'XRGB8888', 
+        "size": picam2.sensor_resolution
+        #"size": (1920, 1080)
+    },
+    transform = libcamera.Transform(hflip=1, vflip=1)    
+))
 picam2.start()
+
+print("Started camera")
 
 piwars2024.set_mode(1)
 time.sleep(2)
@@ -124,10 +136,10 @@ running = True
 while running:
     im = picam2.capture_array()
     #hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
-    im = cv2.flip(im, -1)
+    #im = cv2.flip(im, -1)
     cv2.imshow('image', im)
 
-    image_process(im)
+    #image_process(im)
 
     while jr.events_available() != 0:
         event = jr.get_event()

@@ -44,9 +44,9 @@ class ImuReader(threading.Thread):
                 #print("accel = {}, {}, {}".format(imu[2], imu[3], imu[4]))
                 #print("gyro = {}, {}, {}".format(imu[5], imu[6], imu[7]))
         
-                self.roll = self.roll + imu[5] * 0.08
-                self.pitch = self.pitch + imu[6] * 0.08
-                self.yaw = self.yaw + imu[7] * 0.08
+                self.roll = self.roll + imu[5] * 0.04
+                self.pitch = self.pitch + imu[6] * 0.04
+                self.yaw = self.yaw + imu[7] * 0.04
 
                 xvec.append(imu[4])
                 #yvec.append(dt.datetime.now().strftime("%H:%M:%S.%f"))
@@ -57,7 +57,7 @@ class ImuReader(threading.Thread):
         
             self.xs.extend(xvec)
             self.ys.extend(yvec)
-            time.sleep(0.25)
+            time.sleep(0.1)
 
     def animate(self, i, xs, ys):
     

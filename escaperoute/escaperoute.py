@@ -121,9 +121,40 @@ imu = imuread.ImuReader()
 speed = -10
 turning = 0
 
-picam2 = Picamera2()
-picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
-picam2.start()
+#picam2 = Picamera2()
+#picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
+#picam2.start()
+
+
+print("Calibrating IMU...")
+time.sleep(0.5)
+piwars2024.set_motor(0, 0, 0, 0)
+piwars2024.set_mode(2)
+time.sleep(0.5)
+piwars2024.calibrate_imu()
+time.sleep(25)
+print("DONE")
+
+#piwars2024.imu_turn(180)
+#for i in range(0, 25):
+#    print("yaw={}".format(imu.yaw))
+#    time.sleep(0.5)
+#piwars2024.imu_turn(90)
+#for i in range(0, 25):
+#    print("yaw={}".format(imu.yaw))
+#    time.sleep(0.5)
+#piwars2024.imu_turn(0)
+#for i in range(0, 25):
+#    print("yaw={}".format(imu.yaw))
+#    time.sleep(0.5)
+#piwars2024.imu_turn(-90)
+#for i in range(0, 25):
+#    print("yaw={}".format(imu.yaw))
+#    time.sleep(0.5)
+#piwars2024.imu_turn(0)
+#for i in range(0, 25):
+#    print("yaw={}".format(imu.yaw))
+#    time.sleep(0.5)
 
 piwars2024.set_mode(1) # speed control mode
 piwars2024.set_speed(0, 0)
@@ -157,7 +188,7 @@ def drive_distance(distance):
     piwars2024.reset_encoder()
     m1 = 0
     m2 = 0
-    piwars2024.set_speed(-15, -15)
+    piwars2024.set_speed(-20, -20)
     while abs(m1) < distance:
         m1, m2 = piwars2024.get_encoder()
         print("m1={}, m2={}".format(m1, m2))
@@ -165,15 +196,35 @@ def drive_distance(distance):
 
 
 drive_distance(2000)
-turn(-90)
+piwars2024.imu_turn(-90)
+time.sleep(3.0)
+piwars2024.set_speed(0, 0)
+piwars2024.set_mode(1)
+
 drive_distance(2000)
-turn(-90)
+piwars2024.imu_turn(-180)
+time.sleep(3.0)
+piwars2024.set_speed(0, 0)
+piwars2024.set_mode(1)
+
 drive_distance(2000)
-turn(90)
+piwars2024.imu_turn(-90)
+time.sleep(3.0)
+piwars2024.set_speed(0, 0)
+piwars2024.set_mode(1)
+
 drive_distance(2000)
-turn(90)
+piwars2024.imu_turn(0)
+time.sleep(3.0)
+piwars2024.set_speed(0, 0)
+piwars2024.set_mode(1)
+
 drive_distance(2000)
-turn(-90)
+piwars2024.imu_turn(-90)
+time.sleep(3.0)
+piwars2024.set_speed(0, 0)
+piwars2024.set_mode(1)
+
 drive_distance(2000)
 
 #running = True
