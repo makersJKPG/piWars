@@ -13,10 +13,10 @@ testRunner=Runner()
 
 # fW,fH=cam.getFrameSize()
 
-# cam.setMaskCreation(True)
-# time.sleep(.05)
+cam.setMaskCreation(True)
+time.sleep(.05)
 time.sleep(1)
-#testRunner.setStartSignal(True)
+testRunner.setStartSignal(True)
 
 # def zeroIn(obj,goal):
 #     delta=goal-obj
@@ -31,24 +31,22 @@ gCenter=testRunner.cam.globalCenter
 while testRunner.cam.readSuccess:
     frame=testRunner.cam.getFrame()
     
-    find = testRunner.cam.runInference()
+    # find = testRunner.cam.runInference()
 
-    if not find=={}:
-        print('inference')
-        x=find['x']
-        y=find['y']
-        w=find['w']
-        h=find['h']
-        cl=find['class']
-        if cl==1:
-            c=(0,255,0)
-        elif cl==2:
-            c=(0,0,255)        
-        else:
-            c=(150,150,150)
-        cv.rectangle(frame,(x,y),(x+w,y+h),c,3)
-    else:
-        print('no inference')
+    # if not find=={}:
+    #     x=find['x']
+    #     y=find['y']
+    #     w=find['w']
+    #     h=find['h']
+    #     cl=find['class']
+
+    #     if cl==1:
+    #         c=(0,255,0)
+    #     elif cl==2:
+    #         c=(0,0,255)        
+    #     else:
+    #         c=(150,150,150)
+    #     cv.rectangle(frame,(x,y),(x+w,y+h),c,3)
     
     #centerPoint,targetOffset,targetArea,targetSize,startPoint=testRunner.cam.getBlueCenter()
     # print('startP:',startPoint)
