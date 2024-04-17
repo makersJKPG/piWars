@@ -58,15 +58,15 @@ while True:
     if button == DPAD_UPDOWN and action == 2:
         # forward...
         if value == -32767:
-            rspeed = -30
-            lspeed = -30
+            rspeed = -80
+            lspeed = -80
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
        # reverse...
         if value == 32767:
-            rspeed = 30
-            lspeed = 30
+            rspeed = 80
+            lspeed = 80
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
@@ -80,15 +80,15 @@ while True:
     elif button == DPAD_LEFTRIGHT and action == 2:
         # left...
         if value == -32767:
-            rspeed = -50
-            lspeed = 50
+            rspeed = -80
+            lspeed = 80
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
        # right...
         if value == 32767:
-            rspeed = 50
-            lspeed = -50
+            rspeed = 80
+            lspeed = -80
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
@@ -102,18 +102,19 @@ while True:
     elif button == JOY1_UPDOWN:
         # value is -32767 to 32767
         # convert to -255 to 255
-        speed = int(value/32767*50)
-        rspeed = speed
-        lspeed = speed
-        update_speed = True
+        if abs(value) > 2000:
+            speed = int(value/32767*50)
+            rspeed = speed
+            lspeed = speed
+            update_speed = True
 
     elif button == JOY2_LEFTRIGHT:
         # value is -32767 to 32767
         # convert to -255 to 255
-        turning = int(value/32767*255)
-
-        if turning > 20 or turning < -20:
-            update_speed = True
+        if abs(value) > 2000:
+            turning = int(value/32767*255)
+            if turning > 20 or turning < -20:
+                update_speed = True
 
     elif button == LEFT_TRIGGER:
         # value is -32767 to 32767
