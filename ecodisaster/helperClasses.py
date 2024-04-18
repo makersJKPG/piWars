@@ -9,7 +9,7 @@ from cv2 import (
 from numpy import array,array_equal,uint8,ones,zeros,asarray,int64
 from math import sqrt
 from libcamera import Transform
-import tensorflow as tf
+# import tensorflow as tf
 
 DEBUGGING=True
 if DEBUGGING:
@@ -51,13 +51,13 @@ class Cam:
         #self.cap.set(CAP_PROP_FOURCC,codec)
         self.frame=[]
         self.greenMask=array([])
-        self.greenCenter=(0,0)
+        self.greenCenter=((0,0),0,0,(0,0),(0,0))
         self.redMask=array([])
-        self.redCenter=(0,0)
+        self.redCenter=((0,0),0,0,(0,0),(0,0))
         self.blueMask=array([])
-        self.blueCenter=(0,0)
+        self.blueCenter=((0,0),0,0,(0,0),(0,0))
         self.yellowMask=array([])
-        self.yellowCenter=(0,0)
+        self.yellowCenter=((0,0),0,0,(0,0),(0,0))
         self.kernel=ones((5,5),uint8)
         self.readSuccess=False
         self.createMasks=False
@@ -277,7 +277,7 @@ class Cam:
 
 class MotorControler:
     from enum import Enum
-    import set_motor,get_encoder
+    from piwars2024 import set_motor,get_encoder,pid
     class Mode(Enum):
         MANUAL=0
         AUTONOMOUS=1
@@ -312,6 +312,15 @@ class MotorControler:
         if self.mode==self.Mode.AUTONOMOUS:
             self.moveThread=t(target=self.continuousMovement,args=(),daemon=True)
             self.moveThread.start()
+        
+        limMin = -60.0
+        limMax = 60.0
+        limMinInt = -1.0
+        limMaxInt = 1.0
+        T = 0.02
+        tau = 0.0
+        self.pid = self.pid(0.01, 0.0, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
+
 
     def setlowPassFilter(self,newLow):
         if newLow<1 and newLow>0:
@@ -338,43 +347,59 @@ class MotorControler:
         return self.lowPassFilter
 
     def continuousMovement(self):
-        left,right=(0,1)    #index
-        low,hi=(0,1)        #index
-        motorSetting=(0,0)
+        speed=-25
+        # left,right=(0,1)    #index
+        # low,hi=(0,1)        #index
+        # motorSetting=(0,0)
 
         while self.run:
-            self.encoderL,self.encoderR=self.get_encoder()
+            measurement=self.move
+            setpoint=0
+
+        output = self.pid.update(setpoint, measurement)
+        offset += output
+        if offset > 25:
+            offset = 25.0
+        if offset < -25:
+            offset = -25.0
+
+        lval = int(round(speed + offset))
+        rval = int(round(speed - offset))
+        self.set_speed(lval, rval)
+            # self.encoderL,self.encoderR=self.get_encoder()
 
             # obstacleAvoidance=(
             #     obstacleStart*self.motorInc,
             #     obstacleSize*self.motorInc)
 
-            motorSetting=(
-                (motorSetting[left]*self.lpf[low])+(self.move[left]*self.lpf[hi]),
-                (motorSetting[left]*self.lpf[low])+(self.move[right]*self.lpf[hi]))
+            # motorSetting=(
+            #     (motorSetting[left]*self.lpf[low])+(self.move[left]*self.lpf[hi]),
+            #     (motorSetting[left]*self.lpf[low])+(self.move[right]*self.lpf[hi]))
 
-            self.set_motor(
-                abs(motorSetting[left]),    #Speed for left motor
-                int(motorSetting[left]>0),  #Direction of left motor
-                abs(motorSetting[right]),   #Speed of right motor
-                int(motorSetting[right]>0)) #Direction of right motor
+            # self.set_motor(
+            #     abs(motorSetting[left]),    #Speed for left motor
+            #     int(motorSetting[left]>0),  #Direction of left motor
+            #     abs(motorSetting[right]),   #Speed of right motor
+            #     int(motorSetting[right]>0)) #Direction of right motor
 
-    def moveAutonomous(self,speed=0,direction=Directions.FORWARD):
-        low=1*self.turnRadius
-        high=1-low
+    def moveAutonomous(self,delta):#=0,direction=Directions.FORWARD):
+        self.move=delta
+        
+        # low=1*self.turnRadius
+        # high=1-low
 
-        if direction==self.Directions.TURN_RIGHT:
-            self.move=(speed*high,speed*low)
-        elif direction==self.Directions.TURN_LEFT:
-            self.move=(speed*low,speed*high)
-        elif direction==self.Directions.STANDING_ROT_RIGHT:
-            self.move=(speed,-speed)
-        elif direction==self.Directions.STANDING_ROT_LEFT:
-            self.move=(-speed,speed)
-        elif direction==self.Directions.BACKWARD:
-            self.move=(-speed,-speed)
-        else: #if direction==self.Directions.FORWARD:
-            self.move=(speed,speed)
+        # if direction==self.Directions.TURN_RIGHT:
+        #     self.move=(speed*high,speed*low)
+        # elif direction==self.Directions.TURN_LEFT:
+        #     self.move=(speed*low,speed*high)
+        # elif direction==self.Directions.STANDING_ROT_RIGHT:
+        #     self.move=(speed,-speed)
+        # elif direction==self.Directions.STANDING_ROT_LEFT:
+        #     self.move=(-speed,speed)
+        # elif direction==self.Directions.BACKWARD:
+        #     self.move=(-speed,-speed)
+        # else: #if direction==self.Directions.FORWARD:
+        #     self.move=(speed,speed)
 
     def moveManual(self):
         pass
@@ -389,6 +414,7 @@ class Runner:
     from numpy import array_equal,pi
     from time import sleep
     from math import atan,tan
+    from piwars2024 import imu_turn
     class Mode(Enum):
         IDLE=0
         SEARCH1=1
@@ -459,7 +485,8 @@ class Runner:
         pass
 
     def evasiveAction(self,movement):
-        self.rotation=((-1*movement),movement)
+        # self.rotation=((-1*movement),movement)
+        self.motorControler.move=(self.motorControler.move+movement)-(self.cam.width/2)
 
     def avoidOutOfBounds(self,arrayIndex,arrayLen):
         returnValue=arrayLen-1
@@ -503,21 +530,23 @@ class Runner:
         return (xAlgL,yAlgL,xAlgR,yAlgR)
 
     def zeroIn(self,obj,goal):
-        delta=goal-obj
+        # delta=goal-obj
         mc=self.motorControler
-        if abs(delta)<self.offsetMargin:    #Move forward
-            if DEBUGGING:
-                print('go')
-            mc.moveAutonomous(50)
-        else:
-            if delta<0:
-                if DEBUGGING:
-                    print('right '+str(abs(delta)))
-                mc.moveAutonomous(delta,mc.Directions.TURN_RIGHT)
-            else:
-                if DEBUGGING:
-                    print('left '+str(delta))
-                mc.moveAutonomous(delta,mc.Directions.TURN_LEFT)
+        measurement=obj-(self.cam.width/2)
+        mc.moveAutonomous(measurement)
+        # if abs(delta)<self.offsetMargin:    #Move forward
+        #     if DEBUGGING:
+        #         print('go')
+        #     mc.moveAutonomous(50)
+        # else:
+        #     if delta<0:
+        #         if DEBUGGING:
+        #             print('right '+str(abs(delta)))
+        #         mc.moveAutonomous(delta,mc.Directions.TURN_RIGHT)
+        #     else:
+        #         if DEBUGGING:
+        #             print('left '+str(delta))
+        #         mc.moveAutonomous(delta,mc.Directions.TURN_LEFT)
 
     #Main run sequence
     def runMain(self):
@@ -628,8 +657,9 @@ class Runner:
                 if DEBUGGING:
                     print('No target: Turn RIGHT')
 
-                self.motorControler.moveAutonomous(speed,
-                    self.motorControler.Directions.STANDING_ROT_RIGHT)
+                self.motorControler.moveAutonomous(self.cam.width-(self.cam.width/2))
+                # self.motorControler.moveAutonomous(speed,
+                #     self.motorControler.Directions.STANDING_ROT_RIGHT)
             
             result=self.target!=None
             if result==goal:
@@ -669,7 +699,7 @@ class Runner:
                 self.state=self.Mode.SEARCH1
                 self.target=None
             
-            self.zeroIn(centerPoint[x],self.cam.globalCenter[x])
+            self.zeroIn(centerPoint[x]-(self.cam.width/2))
 
             #Result ok if target inside of roi
             result=(centerPoint[x]+int(targetSize[x]*.5)<self.cam.globalCenter[x]+int(roiSize[x]*.5) and
@@ -721,13 +751,15 @@ class Runner:
                 if move[leftMotor]>move[rightMotor]:
                     if DEBUGGING:
                         print('Deposit not in view, move right')
-                    mc.moveAutonomous(self.cam.globalCenter[x],mc.Directions.TURN_RIGHT)
+                    # mc.moveAutonomous(self.cam.globalCenter[x],mc.Directions.TURN_RIGHT)
+                    mc.moveAutonomous(self.cam.width-(self.cam.width/2))
                 else:
                     if DEBUGGING:
                         print('Deposit not in view, move left')
-                    mc.moveAutonomous(self.cam.globalCenter[x],mc.Directions.TURN_LEFT)    
+                    # mc.moveAutonomous(self.cam.globalCenter[x],mc.Directions.TURN_LEFT)    
+                    mc.moveAutonomous(0-(self.cam.width/2))    
             else:
-                self.zeroIn(centerPoint[x],self.cam.globalCenter[x])
+                self.zeroIn(centerPoint[x]-(self.cam.width/2))
 
             result=(centerPoint[x]>self.cam.globalCenter[x]-acceptableOffset and
                     centerPoint[x]<self.cam.globalCenter[x]+acceptableOffset)
@@ -737,6 +769,7 @@ class Runner:
 
     #Move to deposit, back off
     def deposit(self):
+        self.imu_turn(0)
         print('DEPOSIT')
 
         x=0                 #index
@@ -749,7 +782,7 @@ class Runner:
         goal=True
         roi=[]
 
-        while self.state==self.Mode.DEPOSIT:
+        while self.state==self.Mode.DEPOSIT:            
             if self.target==self.Target.BLUE:
                 centerPoint,targetOffset,targetArea,targetSize,startPoint=self.cam.getBlueCenter()
             if self.target==self.Target.YELLOW:
