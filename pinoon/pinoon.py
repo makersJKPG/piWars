@@ -97,9 +97,14 @@ while True:
     elif button == RIGHT_TRIGGER:
         # value is -32767 to 32767
         # convert to 0 to 255
-        
-        val = int((value + 32767)*255/2/32767)
-        piwars2024.set_servo(2, val)
+
+        if value > 0:
+            piwars2024.set_servo(2, 10)
+        else:
+            piwars2024.set_servo(2, 255)
+
+        #val = int((value + 32767)*255/2/32767)
+        #piwars2024.set_servo(2, val)
 
     #print(piwars2024.get_encoder())
 

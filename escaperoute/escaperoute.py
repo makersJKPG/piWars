@@ -121,10 +121,9 @@ imu = imuread.ImuReader()
 speed = -10
 turning = 0
 
-#picam2 = Picamera2()
-#picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
-#picam2.start()
-
+picam2 = Picamera2()
+picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (1920, 1080)}))
+picam2.start()
 
 print("Calibrating IMU...")
 time.sleep(0.5)
@@ -182,50 +181,106 @@ def turn(degrees):
         time.sleep(0.01)
     piwars2024.set_speed(0, 0)
 
-def drive_distance(distance):
+def drive_distance(distance, direction):
     piwars2024.set_speed(0, 0)
     time.sleep(0.5)
     piwars2024.reset_encoder()
     m1 = 0
     m2 = 0
-    piwars2024.set_speed(-20, -20)
+    piwars2024.set_speed(-30, -30)
     while abs(m1) < distance:
         m1, m2 = piwars2024.get_encoder()
-        print("m1={}, m2={}".format(m1, m2))
+        print("m1={}, m2={}, yaw={}".format(m1, m2, imu.yaw))
     piwars2024.set_speed(0, 0)
 
+def drive_until_blocked():
 
-drive_distance(2000)
+    print("1")
+    piwars2024.set_speed(-40, -40)
+    piwars2024.set_mode(1)
+
+    blocked = False
+    while not blocked:
+        img = picam2.capture_array()
+        #hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        img = cv2.flip(img, -1)
+
+        # make grayscale
+        img = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+
+        # crop image to the area which shouldn't be blocked
+        imgh, imgw = img.shape 
+        roixmin = int(imgw * 0.25)
+        roixmax = int(imgw * 0.75)
+        roiymin = int(imgh * 0.3)
+        roiymax = int(imgh * 0.5)
+        img = img[roiymin:roiymax,roixmin:roixmax]
+    
+        # scale image...
+        width = 100
+        height = 100
+        resized = cv2.resize(img, (width, height))
+
+        cv2.imshow('image', img)
+       
+        # threshold area to mask
+        ret, mask = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY)
+        cv2.imshow('mask', mask)
+
+        # count pixels in mask
+        # if pixels greater than a limit then stop running
+        numpix = cv2.countNonZero(mask)
+        print(numpix)
+        if numpix > 5000:
+            blocked = True
+        
+        cv2.waitKey(1)
+
+    piwars2024.set_speed(0, 0)
+
+# tactic:
+# drive forward x1 = 1m
+# turn right 90deg
+# drive forward until blocked
+# turn right 90 deg
+# drive forward x2 = 0.5m
+# turn left 90deg
+# drive forward until blocked
+# turn left 90 deg
+# drive forward x3 = 0.5m
+# turn right 90 deg
+# drive forward 0.5m
+
+drive_distance(2500, 0)
 piwars2024.imu_turn(-90)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
+drive_until_blocked()
 
-drive_distance(2000)
 piwars2024.imu_turn(-180)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
+drive_distance(1800, -180)
 
-drive_distance(2000)
 piwars2024.imu_turn(-90)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
+drive_until_blocked()
 
-drive_distance(2000)
 piwars2024.imu_turn(0)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
+drive_distance(1800, 0)
 
-drive_distance(2000)
 piwars2024.imu_turn(-90)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
-
-drive_distance(2000)
+drive_distance(2000, -90)
 
 #running = True
 #while running:
@@ -235,9 +290,14 @@ drive_distance(2000)
 #            print("pressed up")
 #            turn(90)
 
+piwars2024.set_speed(0, 0)
 time.sleep(0.5)
 piwars2024.set_motor(0, 0, 0, 0)
+time.sleep(0.5)
 piwars2024.set_mode(2)
+time.sleep(0.5)
+piwars2024.set_motor(0, 0, 0, 0)
+time.sleep(2)
 
 exit(0)
 

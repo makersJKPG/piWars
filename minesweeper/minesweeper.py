@@ -89,33 +89,35 @@ def find_colour(img, hue):
         xpos = int(pos[0] - width/2)
         ypos = int(height - pos[1])
 
-        if ypos < 150:
+        if ypos < 50:
             piwars2024.set_speed(0, 0)
-            time.sleep(8)
+            time.sleep(2)
+            piwars2024.set_speed(10, 10)
+            time.sleep(2)
+            piwars2024.set_speed(0, 0)
+            seeking = True
+        else:
+            print("Mine at x={},y={}".format(xpos, ypos))
 
-        print("Mine at x={},y={}".format(xpos, ypos))
+            # pid regulates a turning angle / direction which should nominally be 0 degrees
+            setpoint = 0.0
+            measurement = xpos / width
+            speed = -30.0
+            output = mine_pid.update(setpoint, measurement)
+            lval = int(round(speed + output))
+            rval = int(round(speed - output))
 
-        # pid regulates a turning angle / direction which should nominally be 0 degrees
-        setpoint = 0.0
-        measurement = xpos / width
-        speed = -10.0
-        output = mine_pid.update(setpoint, measurement)
-        lval = int(round(speed + output))
-        rval = int(round(speed - output))
+            print("setpoint={}, measurement={}, error={}, output={}, lval={}, rval={}".format(setpoint, measurement, mine_pid.prevError, output, lval, rval)) 
 
-        print("setpoint={}, measurement={}, error={}, output={}, lval={}, rval={}".format(setpoint, measurement, mine_pid.prevError, output, lval, rval)) 
-
-        piwars2024.set_speed(lval, rval)
+            piwars2024.set_speed(lval, rval)
 
     else:
         if seeking == False:
-            print("Waiting")
-            piwars2024.set_speed(0, 0)
-            time.sleep(2)
-            print("Seeking")
-            seeking = True
-        piwars2024.set_speed(-10, 10)
-        print("No mine")
+#            print("Waiting")
+            piwars2024.set_speed(10, 10)
+            time.sleep(1)
+        print("Seeking")
+        piwars2024.set_speed(-20, 20)
         seeking = True
 
     return red_only, mask

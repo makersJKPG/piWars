@@ -53,8 +53,13 @@ while True:
     styring = struct.unpack(pack_format, event)
     
     milli, value, action, button = styring
-    #print("milli={} value={} action={} button={}".format(milli, value, action, button))
-    
+
+    if abs(value) < 2000:
+        button = -1
+    else:
+        print("milli={} value={} action={} button={}".format(milli, value, action, button))
+
+        
     if button == DPAD_UPDOWN and action == 2:
         # forward...
         if value == -32767:
@@ -88,7 +93,7 @@ while True:
        # right...
         if value == 32767:
             rspeed = 80
-            lspeed = -80
+            speed = -80
             print("lspeed={}, rspeed={}".format(lspeed, rspeed))
             piwars2024.set_speed(lspeed, rspeed)
 
@@ -115,20 +120,6 @@ while True:
             turning = int(value/32767*255)
             if turning > 20 or turning < -20:
                 update_speed = True
-
-    elif button == LEFT_TRIGGER:
-        # value is -32767 to 32767
-        # convert to 0 to 255
-        
-        val = int((value + 32767)*255/2/32767)
-        piwars2024.set_servo(1, val)
-
-    elif button == RIGHT_TRIGGER:
-        # value is -32767 to 32767
-        # convert to 0 to 255
-        
-        val = int((value + 32767)*255/2/32767)
-        piwars2024.set_servo(2, val)
 
     if update_speed:
         angle = turning*math.pi/2/255
