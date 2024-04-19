@@ -89,7 +89,7 @@ def find_colour(img, hue):
         xpos = int(pos[0] - width/2)
         ypos = int(height - pos[1])
 
-        if ypos < 50:
+        if ypos < 80:
             piwars2024.set_speed(0, 0)
             time.sleep(2)
             piwars2024.set_speed(10, 10)
@@ -117,7 +117,7 @@ def find_colour(img, hue):
             piwars2024.set_speed(10, 10)
             time.sleep(1)
         print("Seeking")
-        piwars2024.set_speed(-20, 20)
+        piwars2024.set_speed(-15, 15)
         seeking = True
 
     return red_only, mask
@@ -174,6 +174,20 @@ def image_process(img):
 
     return mask
 
+def wait_for_start_button():
+    count = 0
+    while True:
+        time.sleep(0.1)
+        print("Waiting {}".format(count))
+        count = count + 1
+        while jr.events_available() != 0:
+            event = jr.get_event()
+            if event["value"] == -32767 and event["action"] == 2 and event["button"] == 7:
+                print("pressed up")
+                return
+            else:
+                print("nothing to do {}, {}, {}, {}".format(event["milli"], event["value"], event["action"], event["button"]))
+
 params = {
     "disable_motors": False,
     "roixmin": 0.0,
@@ -228,10 +242,10 @@ time.sleep(4)
 # turn off auto exposure after setting has stabilized
 picam2.set_controls({'AeEnable': False})
 
-piwars2024.accelerate(0, -10, steps=3, intervaltime=0.1)
+wait_for_start_button()
+
 speed = -25
 turning = 0
-
 running = True
 
 while running:
@@ -240,7 +254,6 @@ while running:
 
     colmask, redmask = find_colour(img, 55)
     grey = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    #grey = add_blinkers(grey, 0)
 
     #mask = image_process(grey)
     cv2.imshow("colmask", colmask)

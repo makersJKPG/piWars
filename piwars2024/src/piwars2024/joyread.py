@@ -24,14 +24,15 @@ class JoyReader(threading.Thread):
             while not self.terminated:
                 event = file.read(event_size)
                 milli, value, action, button = struct.unpack(pack_format, event)
-                print("milli={} value={} action={} button={}".format(milli, value, action, button))
-                if button == 7:
-                    self.eventlist.append({ 
-                        "milli": milli,
-                        "value": value,
-                        "action": action,
-                        "button": button
-                    })
+                if abs(value) > 1000:
+                    print("milli={} value={} action={} button={}".format(milli, value, action, button))
+                    if button == 7:
+                        self.eventlist.append({ 
+                            "milli": milli,
+                            "value": value,
+                            "action": action,
+                            "button": button
+                        })
 
     def events_available(self):
         return len(self.eventlist)

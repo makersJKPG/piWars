@@ -55,6 +55,11 @@ def add_blinkers(img, shade):
     triangle_cnt = np.array( [pt1, pt2, pt3] )
     cv2.drawContours(img, [triangle_cnt], 0, (shade, shade, shade), -1)
 
+    cv2.rectangle(img, 
+                  (int(width/2-width*0.3), int(height*0.6)), 
+                  (int(width/2+width*0.3), int(height-1)), 
+                  (shade, shade, shade), -1)
+
     return img
 
 def find_colour(img, hue):
@@ -101,27 +106,26 @@ def image_process(img):
         setpoint = 0
 
         # pid regulates a turning angle / direction which should nominally be 0 degrees
-#        output = pid.update(setpoint, measurement)
-#        angle = output*math.pi/2/100
-#        scale = math.cos(angle)
-#        if angle > 0:
-#            lval = int(round(speed * scale))
-#            rval = int(speed)
-#        else:
-#            lval = int(speed)
-#            rval = int(round(speed * scale))
-
         output = pid.update(setpoint, measurement)
-        offset += output
-        if offset > 25:
-            offset = 25.0
-        if offset < -25:
-            offset = -25.0
+        angle = output*math.pi/2/100
+        scale = math.cos(angle)
+        if angle > 0:
+            lval = int(round(speed * scale))
+            rval = int(speed)
+        else:
+            lval = int(speed)
+            rval = int(round(speed * scale))
 
-        lval = int(round(speed + offset))
-        rval = int(round(speed - offset))
+#        output = pid.update(setpoint, measurement)
+#        offset += output
+#        if offset > 25:
+#            offset = 25.0
+#        if offset < -25:
+#            offset = -25.0
+#        lval = int(round(speed + offset))
+#        rval = int(round(speed - offset))
 
-        print("setpoint={}, measurement={}, error={}, output={}, offset={}, lval={}, rval={}".format(setpoint, measurement, pid.prevError, output, offset, lval, rval)) 
+        print("setpoint={}, measurement={}, error={}, output={}, lval={}, rval={}".format(setpoint, measurement, pid.prevError, output, lval, rval)) 
 
         piwars2024.set_speed(lval, rval)
     else:
@@ -129,6 +133,20 @@ def image_process(img):
         #pass
 
     return mask
+
+def wait_for_start_button():
+    count = 0
+    while True:
+        time.sleep(0.1)
+        print("Waiting {}".format(count))
+        count = count + 1
+        while jr.events_available() != 0:
+            event = jr.get_event()
+            if event["value"] == -32767 and event["action"] == 2 and event["button"] == 7:
+                print("pressed up")
+                return
+            else:
+                print("nothing to do {}, {}, {}, {}".format(event["milli"], event["value"], event["action"], event["button"]))
 
 params = {
     "disable_motors": False,
@@ -146,7 +164,7 @@ limMinInt = -1.0
 limMaxInt = 1.0
 T = 0.02
 tau = 0.0
-pid = piwars2024.pid(0.01, 0.0, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
+pid = piwars2024.pid(0.2, 0.02, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
 
 jr = piwars2024.JoyReader()
 
@@ -176,10 +194,12 @@ time.sleep(4)
 # turn off auto exposure after setting has stabilized
 picam2.set_controls({'AeEnable': False})
 
-piwars2024.accelerate(0, -10, steps=3, intervaltime=0.1)
-speed = -25
+wait_for_start_button()
+
+speed = -35
 turning = 0
 
+piwars2024.accelerate(0, speed, steps=4, intervaltime=0.1)
 running = True
 
 while running:
