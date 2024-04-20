@@ -9,7 +9,9 @@ from cv2 import (
 from numpy import array,array_equal,uint8,ones,zeros,asarray,int64
 from math import sqrt
 from libcamera import Transform
-# import tensorflow as tf
+#import tensorflow as tf
+
+import time
 
 DEBUGGING=True
 if DEBUGGING:
@@ -67,8 +69,7 @@ class Cam:
             self.emptyFrame,'Error reading frame',(25,25), 
             FONT_HERSHEY_COMPLEX,1,(255,255,255), 1)
         self.run=True
-        self.inferenceModel=tf.saved_model.load(
-            'ecodisaster/barrel_inference_graph/saved_model')
+       # self.inferenceModel=tf.saved_model.load('/home/pi/projects/piWars/ecodisaster/trained_models')
        # self.inferenceThread=t(target=self.runInference,args=(),daemon=True)
        # self.inferenceThread.start()        
 #        self.categoryIndex=label_map_util.create_category_index_from_labelmap(
@@ -132,23 +133,23 @@ class Cam:
     def getYellowCenter(self):
         return self.yellowCenter
 
-    def runInference(self):
-        image=self.frame
-        inputTensor=tf.convert_to_tensor(asarray(image))
-        inputTensor=inputTensor[tf.newaxis,...]
+    # def runInference(self):
+        # image=self.frame
+        # inputTensor=tf.convert_to_tensor(asarray(image))
+        # inputTensor=inputTensor[tf.newaxis,...]
 
-        outputDict=self.inferenceModel(inputTensor)
-        largestArea=0
-        largestAreaCenter=(0,0)
-        x,y,w,h=(0,0,0,0)
-        rw,rh,rx,ry=(0,0,0,0)
-        cla=0
-        offset=0
-        numDetections=int(outputDict.pop('num_detections'))
-        outputDict={key:value[0, :numDetections].numpy()
-                    for key,value in outputDict.items()}
-        outputDict['num_detections']=numDetections
-        outputDict['detection_classes']=outputDict['detection_classes'].astype(int64)
+        # outputDict=self.inferenceModel(inputTensor)
+        # largestArea=0
+        # largestAreaCenter=(0,0)
+        # x,y,w,h=(0,0,0,0)
+        # rw,rh,rx,ry=(0,0,0,0)
+        # cla=0
+        # offset=0
+        # numDetections=int(outputDict.pop('num_detections'))
+        # outputDict={key:value[0, :numDetections].numpy()
+                    # for key,value in outputDict.items()}
+        # outputDict['num_detections']=numDetections
+        # outputDict['detection_classes']=outputDict['detection_classes'].astype(int64)
     
 
 #        if 'detection_masks' in outputDict:
@@ -160,33 +161,33 @@ class Cam:
 #            outputDict['detection_masks_refraimed']=detectionMasksReframed.numpy()
 
 
-        if ('detection_boxes' in outputDict and 
-            'detection_scores' in outputDict and 
-            'detection_classes' in outputDict):
-            for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_classes'],outputDict['detection_scores']):
-                if score>.5 and (cl==1 or cl==2):
-                    x,y=((int(box[1]*image.shape[1])),(int(box[0]*image.shape[0])))
-                    w,h=((int(box[3]*image.shape[1])),(int(box[2]*image.shape[0])))
-                    area=(w-x)*(h-y)
-                    cla=cl
-                    if area>largestArea:
-                        rw,rh,rx,ry=(w,h,x,y)
-                        largestArea=area
-                        cx,cy=(int(((w-x)*.5)+x),int(((h-y)*.5)+y))
-                        largestAreaCenter=(cx,cy)
-                        offset=int(sqrt(pow(cx,2)+pow(cy,2))-
-                            sqrt(pow(self.globalCenter[0],2)+pow(self.globalCenter[1],2)))
-            return {
-                'class':cla,
-                'largestArea':largestArea,
-                'largestAreaCenter':largestAreaCenter,
-                'offset':offset,
-                'w':rw,
-                'h':rh,
-                'x':rx,
-                'y':ry         
-            }
-        return {}
+        # ~ if ('detection_boxes' in outputDict and 
+            # ~ 'detection_scores' in outputDict and 
+            # ~ 'detection_classes' in outputDict):
+            # ~ for box,cl,score in zip(outputDict['detection_boxes'],outputDict['detection_classes'],outputDict['detection_scores']):
+                # ~ if score>.5 and (cl==1 or cl==2):
+                    # ~ x,y=((int(box[1]*image.shape[1])),(int(box[0]*image.shape[0])))
+                    # ~ w,h=((int(box[3]*image.shape[1])),(int(box[2]*image.shape[0])))
+                    # ~ area=(w-x)*(h-y)
+                    # ~ cla=cl
+                    # ~ if area>largestArea:
+                        # ~ rw,rh,rx,ry=(w,h,x,y)
+                        # ~ largestArea=area
+                        # ~ cx,cy=(int(((w-x)*.5)+x),int(((h-y)*.5)+y))
+                        # ~ largestAreaCenter=(cx,cy)
+                        # ~ offset=int(sqrt(pow(cx,2)+pow(cy,2))-
+                            # ~ sqrt(pow(self.globalCenter[0],2)+pow(self.globalCenter[1],2)))
+            # ~ return {
+                # ~ 'class':cla,
+                # ~ 'largestArea':largestArea,
+                # ~ 'largestAreaCenter':largestAreaCenter,
+                # ~ 'offset':offset,
+                # ~ 'w':rw,
+                # ~ 'h':rh,
+                # ~ 'x':rx,
+                # ~ 'y':ry         
+            # ~ }
+        # ~ return {}
 
     #Search for object in mask, calculates center of object using blounding box coordinates.
     #Returns center coordinates of largest object and offset from view (global) center.
@@ -277,7 +278,9 @@ class Cam:
 
 class MotorControler:
     from enum import Enum
-    from piwars2024 import set_motor,get_encoder,pid
+    # ~ from piwars2024 import set_motor,set_speed,get_encoder,pid
+    import piwars2024
+    
     class Mode(Enum):
         MANUAL=0
         AUTONOMOUS=1
@@ -309,9 +312,9 @@ class MotorControler:
         self.obstasclePos=(0,0)
         #self.startingPoint=self.get_encoder() #Left,Right encoder offset
         self.targetCalculation=0
-        if self.mode==self.Mode.AUTONOMOUS:
-            self.moveThread=t(target=self.continuousMovement,args=(),daemon=True)
-            self.moveThread.start()
+        # ~ if self.mode==self.Mode.AUTONOMOUS:
+            # ~ self.moveThread=t(target=self.continuousMovement,args=(),daemon=True)
+            # ~ self.moveThread.start()
         
         limMin = -60.0
         limMax = 60.0
@@ -319,8 +322,9 @@ class MotorControler:
         limMaxInt = 1.0
         T = 0.02
         tau = 0.0
-        self.pid = self.pid(0.01, 0.0, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
+        self.pid = self.piwars2024.pid(0.5, 0.0, 0.00, T, tau, limMin, limMax, limMinInt, limMaxInt)
 
+        self.piwars2024.set_mode(1)
 
     def setlowPassFilter(self,newLow):
         if newLow<1 and newLow>0:
@@ -346,26 +350,26 @@ class MotorControler:
     def getLowPassFilter(self):
         return self.lowPassFilter
 
-    def continuousMovement(self):
-        speed=-25
-        # left,right=(0,1)    #index
-        # low,hi=(0,1)        #index
-        # motorSetting=(0,0)
+    # ~ def continuousMovement(self):
+        # ~ speed=-25
+        # ~ # left,right=(0,1)    #index
+        # ~ # low,hi=(0,1)        #index
+        # ~ # motorSetting=(0,0)
 
-        while self.run:
-            measurement=self.move
-            setpoint=0
+        # ~ while self.run:
+            # ~ measurement=self.move
+            # ~ setpoint=0
 
-        output = self.pid.update(setpoint, measurement)
-        offset += output
-        if offset > 25:
-            offset = 25.0
-        if offset < -25:
-            offset = -25.0
+            # ~ output = self.pid.update(setpoint, measurement)
+            # ~ offset += output
+            # ~ if offset > 25:
+                # ~ offset = 25.0
+            # ~ if offset < -25:
+                # ~ offset = -25.0
 
-        lval = int(round(speed + offset))
-        rval = int(round(speed - offset))
-        self.set_speed(lval, rval)
+            # ~ lval = int(round(speed + offset))
+            # ~ rval = int(round(speed - offset))
+            # ~ self.set_speed(lval, rval)
             # self.encoderL,self.encoderR=self.get_encoder()
 
             # obstacleAvoidance=(
@@ -382,8 +386,27 @@ class MotorControler:
             #     abs(motorSetting[right]),   #Speed of right motor
             #     int(motorSetting[right]>0)) #Direction of right motor
 
+    def moveAutonomousTurn(self, speed):
+        self.piwars2024.set_speed(-speed,speed)
+
     def moveAutonomous(self,delta):#=0,direction=Directions.FORWARD):
-        self.move=delta
+        # ~ self.move=delta
+        
+        measurement=delta
+        setpoint=0
+
+        print("measurement={}".format(measurement))
+
+        output = self.pid.update(setpoint, measurement)
+#        offset += output
+#        if offset > 25:
+#            offset = 25.0
+#        if offset < -25:
+#            offset = -25.0
+
+        lval = int(round(-20 + output))
+        rval = int(round(-20 - output))
+        self.piwars2024.set_speed(lval, rval)
         
         # low=1*self.turnRadius
         # high=1-low
@@ -437,7 +460,7 @@ class Runner:
                  width=300,
                  sortNum=12,
                  offsetMargin=10,
-                 heldObject=70,
+                 heldObject=80,
                  run=True):
         if DEBUGGING:
             self.debugFrame=[]
@@ -529,10 +552,10 @@ class Runner:
 
         return (xAlgL,yAlgL,xAlgR,yAlgR)
 
-    def zeroIn(self,obj,goal):
+    def zeroIn(self,obj):
         # delta=goal-obj
         mc=self.motorControler
-        measurement=obj-(self.cam.width/2)
+        measurement=obj
         mc.moveAutonomous(measurement)
         # if abs(delta)<self.offsetMargin:    #Move forward
         #     if DEBUGGING:
@@ -592,6 +615,8 @@ class Runner:
         speed=speed
 
         while self.state==self.Mode.SEARCH1:
+            
+            time.sleep(0.02)
             rC=self.cam.redCenter
             gC=self.cam.greenCenter
 
@@ -657,7 +682,7 @@ class Runner:
                 if DEBUGGING:
                     print('No target: Turn RIGHT')
 
-                self.motorControler.moveAutonomous(self.cam.width-(self.cam.width/2))
+                self.motorControler.moveAutonomousTurn(20)
                 # self.motorControler.moveAutonomous(speed,
                 #     self.motorControler.Directions.STANDING_ROT_RIGHT)
             
@@ -677,7 +702,12 @@ class Runner:
         height=self.cam.height
         roiSize=(self.width,self.heldObject)
 
+        i = 0
         while self.state==self.Mode.FETCH:
+            print("#{}".format(i))
+            i = i + 1
+            time.sleep(0.02)
+            
             if self.target==self.Target.RED:
                 centerPoint,_,_,targetSize,_=self.cam.getRedCenter()
             elif self.target==self.Target.GREEN:
@@ -701,11 +731,19 @@ class Runner:
             
             self.zeroIn(centerPoint[x]-(self.cam.width/2))
 
+            print(centerPoint)
+
             #Result ok if target inside of roi
-            result=(centerPoint[x]+int(targetSize[x]*.5)<self.cam.globalCenter[x]+int(roiSize[x]*.5) and
-                    centerPoint[x]-int(targetSize[x]*.5)>self.cam.globalCenter[x]-int(roiSize[x]*.5) and
-                    centerPoint[y]+int(targetSize[y]*.5)<height and
-                    centerPoint[y]-int(targetSize[y]*.5)>height-roiSize[y])
+            targetRightSide=centerPoint[x]+int(targetSize[x]*.75)
+            clawRightSide=self.cam.globalCenter[x]+int(roiSize[x]*.75)
+            targetLeftSide=centerPoint[x]-int(targetSize[x]*.75)
+            clawLeftSide=self.cam.globalCenter[x]-int(roiSize[x]*.75)
+            targetDepth=centerPoint[y]-int(targetSize[y]*.5)
+            
+            result=targetDepth>height-roiSize[y]
+            # ~ result=(targetRightSide<clawRightSide and
+                    # ~ targetLeftSide>clawLeftSide and
+                    # ~ targetDepth>height-roiSize[y])
             
             if result==goal:
                 break

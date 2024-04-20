@@ -78,6 +78,20 @@ def image_process(img):
     cv2.imshow("mask", mask)
     cv2.imshow("image", img)
 
+def wait_for_start_button():
+    count = 0
+    while True:
+        time.sleep(0.1)
+        print("Waiting {}".format(count))
+        count = count + 1
+        while jr.events_available() != 0:
+            event = jr.get_event()
+            if event["value"] == -32767 and event["action"] == 2 and event["button"] == 7:
+                print("pressed up")
+                return
+            else:
+                print("nothing to do {}, {}, {}, {}".format(event["milli"], event["value"], event["action"], event["button"]))
+
 params = {
     "disable_motors": False,
     "roixmin": 0.0,
@@ -134,6 +148,8 @@ piwars2024.calibrate_imu()
 time.sleep(25)
 print("DONE")
 
+wait_for_start_button()
+
 #piwars2024.imu_turn(180)
 #for i in range(0, 25):
 #    print("yaw={}".format(imu.yaw))
@@ -157,12 +173,29 @@ print("DONE")
 
 piwars2024.set_mode(1) # speed control mode
 piwars2024.set_speed(0, 0)
-time.sleep(2)
 
 lval = 0
 rval = 0
 piwars2024.set_speed(0, 0)
 
+def add_blinkers(img, shade):
+
+    height, width = img.shape
+
+    pt1 = (int(width*0.66), 0)
+    pt2 = (width-1, 0)
+    pt3 = (width-1, int(height*0.5))
+    triangle_cnt = np.array( [pt1, pt2, pt3] )
+    cv2.drawContours(img, [triangle_cnt], 0, (shade, shade, shade), -1)
+
+    pt1 = (int(width*0.33), 0)
+    pt2 = (0, 0)
+    pt3 = (0, int(height*0.5))
+    triangle_cnt = np.array( [pt1, pt2, pt3] )
+    cv2.drawContours(img, [triangle_cnt], 0, (shade, shade, shade), -1)
+
+    return img
+ 
 def turn(degrees):
     setpoint = imu.yaw + degrees
     speed = 0.0
@@ -216,6 +249,8 @@ def drive_until_blocked():
         roiymax = int(imgh * 0.5)
         img = img[roiymin:roiymax,roixmin:roixmax]
     
+        img = add_blinkers(img, 0)
+
         # scale image...
         width = 100
         height = 100
@@ -224,7 +259,7 @@ def drive_until_blocked():
         cv2.imshow('image', img)
        
         # threshold area to mask
-        ret, mask = cv2.threshold(img, 210, 255, cv2.THRESH_BINARY)
+        ret, mask = cv2.threshold(img, 220, 255, cv2.THRESH_BINARY)
         cv2.imshow('mask', mask)
 
         # count pixels in mask
@@ -251,7 +286,7 @@ def drive_until_blocked():
 # turn right 90 deg
 # drive forward 0.5m
 
-drive_distance(2500, 0)
+drive_distance(4000, 0)
 piwars2024.imu_turn(-90)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
@@ -262,7 +297,7 @@ piwars2024.imu_turn(-180)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
-drive_distance(1800, -180)
+drive_distance(2500, -180)
 
 piwars2024.imu_turn(-90)
 time.sleep(3.0)
@@ -274,13 +309,13 @@ piwars2024.imu_turn(0)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
-drive_distance(1800, 0)
+drive_distance(2500, 0)
 
 piwars2024.imu_turn(-90)
 time.sleep(3.0)
 piwars2024.set_speed(0, 0)
 piwars2024.set_mode(1)
-drive_distance(2000, -90)
+drive_distance(6500, -90)
 
 #running = True
 #while running:

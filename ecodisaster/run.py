@@ -13,7 +13,7 @@ testRunner=Runner()
 
 # fW,fH=cam.getFrameSize()
 
-cam.setMaskCreation(True)
+#testRunner.cam.setMaskCreation(True)
 time.sleep(.05)
 time.sleep(1)
 testRunner.setStartSignal(True)
@@ -27,7 +27,7 @@ testRunner.setStartSignal(True)
 #             print('right '+str(abs(delta)))
 #         else:
 #             print('left '+str(delta))
-gCenter=testRunner.cam.globalCenter
+#gCenter=testRunner.cam.globalCenter
 while testRunner.cam.readSuccess:
     frame=testRunner.cam.getFrame()
     
@@ -118,21 +118,20 @@ while testRunner.cam.readSuccess:
     rpt1=(rstartPoint[0],rstartPoint[1]+rtargetSize[1])
     cv.line(frame,(gCenter[0]-int(testRunner.width*.5),testRunner.cam.height),rpt1,(0,0,255),1)
     cv.line(frame,(gCenter[0]+int(testRunner.width*.5),testRunner.cam.height),rpt2,(0,0,255),1)
-
+    """
     cv.rectangle(
         frame,
-        (int(testRunner.cam.globalCenter[0]-testRunner.width*.5),testRunner.cam.height-testRunner.heldObject),
-        (int(testRunner.cam.globalCenter[0]+testRunner.width*.5),testRunner.cam.height-1),
-        (255,255,255),
-        3)
-
+        (int(testRunner.cam.globalCenter[0]-testRunner.width*.75),testRunner.cam.height-testRunner.heldObject),
+        (int(testRunner.cam.globalCenter[0]+testRunner.width*.75),testRunner.cam.height-1),
+        (255,255,255),3)
+    """
     if not np.array_equal(testRunner.debugFrame,[]):
         cv.imshow('target',testRunner.debugFrame)
     if not np.array_equal(testRunner.debugGreenMask,[]):
         cv.imshow('green',testRunner.debugGreenMask)
     if not np.array_equal(testRunner.debugRedMask,[]):
         cv.imshow('red',testRunner.debugRedMask)
- """
+    """
     cv.imshow('Normal frame',frame)
 
     if cv.waitKey(1)==ord('q'):
